@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>wire</title>
+<meta name="description" content="A list of news links from public RSS and GDELT sources.">
+<meta name="color-scheme" content="light dark">
+<link rel="preload" href="fonts/Recursive-Variable.woff2?v=14" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/AtkinsonHyperlegible-Regular.woff2?v=14" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="styles.css?v=14">
+</head>
+<body>
+
+<!-- The page-wide grain. Ages with fetch cycle and with scroll depth into the
+     buffer. Resets visibly on each successful fetch. Stalls and climbs on
+     connection failure so the page itself visibly degrades. -->
+<div class="grain" aria-hidden="true">
+  <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" preserveAspectRatio="none">
+    <filter id="grain-filter">
+      <feTurbulence id="grain-turb" type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="3" stitchTiles="stitch"/>
+      <feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.9 0"/>
+    </filter>
+    <rect width="100%" height="100%" filter="url(#grain-filter)"/>
+  </svg>
+</div>
+
+<!-- Sticky header: wordmark + filter input + chromatic bar. Both wordmark and
+     bar stay pinned to the top of the viewport during scroll. The wordmark
+     color tracks the topmost visible article's time-of-day via CSS
+     scroll-driven animation. -->
+<header class="header" id="header">
+  <div class="mark is-initial" id="mark">
+    <span class="word" id="word">wire</span><input id="prompt" class="prompt" type="text"
+                                                   autocomplete="off" spellcheck="false"
+                                                   autocapitalize="off" autocorrect="off"
+                                                   enterkeyhint="search" inputmode="search"
+                                                   aria-label="filter — plain text, @source, @section, or @saved">
+  </div>
+
+  <div class="bar" id="bar"
+       role="slider"
+       aria-label="chromatic state — drag to dim the page through the day"
+       aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
+       tabindex="0">
+    <div class="bar-track"></div>
+    <div class="bar-cursor" id="bar-cursor" aria-hidden="true"></div>
+  </div>
+</header>
+
+<!-- Pull-to-refresh sentinel at the very top of scrollable content. The
+     rubber-band overscroll above this triggers a refresh. -->
+<div class="pull-refresh" id="pull-refresh" aria-hidden="true"></div>
+
+<main id="stream"></main>
+
+<!-- Overscroll sentinel: when scrolled into view past the bottom of the
+     article list, the colophon panel rises. -->
+<div class="overscroll-sentinel" id="overscroll-sentinel" aria-hidden="true"></div>
+
+<footer><small id="status">&mdash;</small></footer>
+
+<!-- The vertical scroll slider on the right edge. Invisible at rest.
+     Breathes opacity in sync with the wordmark's weight breath. Materializes
+     on scroll input. Its gradient maps the 26-hour buffer to chromatic
+     keyframe positions; the thumb's position is scroll depth in time-space. -->
+<div class="scroller" id="scroller" role="slider"
+     aria-label="scroll position in news buffer"
+     aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
+     tabindex="0">
+  <div class="scroller-track"></div>
+  <div class="scroller-thumb" id="scroller-thumb"></div>
+</div>
+
+<!-- The colophon. Rises from below on overscroll past the bottom of the
+     article list, or via ? keyboard. Tap outside or press Esc to dismiss. -->
+<div class="colophon" id="colophon" aria-hidden="true" role="dialog" aria-label="colophon">
+  <div class="colophon-inner">
+    <p class="colophon-title"><strong>wire</strong> — a daily aggregation of public news.</p>
+
+    <p class="colophon-rules">type to filter · drag the bar to dim · each line — one story across every host</p>
+
+    <p>Set in Recursive Variable at wire's wordmark coordinates (wght 620, casl 0.85, mono 0) and Atkinson Hyperlegible. Composed in vanilla HTML, CSS, and JavaScript.</p>
+
+    <p>No tracking. No accounts. No ads. Designed to last.</p>
+
+    <p class="colophon-keys"><span class="k-label">keyboard</span>
+      <kbd>/</kbd> filter · <kbd>esc</kbd> clear ·
+      <kbd>j</kbd> <kbd>k</kbd> next / prev · <kbd>g g</kbd> top ·
+      <kbd>s</kbd> save · <kbd>o</kbd> open · <kbd>?</kbd> colophon</p>
+
+    <p class="colophon-keys"><span class="k-label">touch</span>
+      tap wordmark → refresh · double-tap → filter ·
+      long-press → focus mode · long-press article → save ·
+      pull down at top → refresh · pull up past bottom → colophon</p>
+
+    <p class="colophon-keys"><span class="k-label">filter</span>
+      plain text · <code>@source</code> · <code>@section</code> · <code>@saved</code></p>
+
+    <p class="colophon-rss">RSS / JSON — <code>/api/news</code></p>
+  </div>
+</div>
+
+<script src="app.js?v=14" defer></script>
+</body>
+</html>

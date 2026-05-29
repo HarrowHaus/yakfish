@@ -1,0 +1,692 @@
+/* wire — savant aggregator (v=14)
+ *
+ * Six surfaces, two faces, one chromatic variable. See DESIGN.md.
+ *
+ *   1. The wordmark        — masthead, refresh, filter opener, focus-mode toggle
+ *   2. The chromatic bar   — slider, clock, chromatic legend
+ *   3. The filter input    — fuzzy match + @source + @section + @saved
+ *   4. The scroll slider   — invisible, synced breath, 26h chromatic map
+ *   5. Each article        — tap to open, long-press to save, dimmed if read
+ *   6. The grain           — fetch clock, freshness, connection state
+ *
+ * Type is Recursive Variable, set at wire's axis coordinates. The wordmark's
+ * five variable axes (wght/CASL/MONO/slnt + color) are five state channels.
+ * Atkinson Hyperlegible is the static reading face for body and headlines.
+ * All sizes and spacing use clamp() interpolation between 360px and 1240px.
+ */
+
+/* ---------- faces ---------- */
+
+@font-face {
+  font-family: 'Recursive';
+  src: url('fonts/Recursive-Variable.woff2') format('woff2-variations'),
+       url('fonts/Recursive-Variable.woff2') format('woff2');
+  font-weight: 300 1000;
+  font-style: oblique -15deg 0deg;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Atkinson Hyperlegible';
+  src: url('fonts/AtkinsonHyperlegible-Regular.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Atkinson Hyperlegible';
+  src: url('fonts/AtkinsonHyperlegible-Italic.woff2') format('woff2');
+  font-weight: 400; font-style: italic; font-display: swap;
+}
+@font-face {
+  font-family: 'Atkinson Hyperlegible';
+  src: url('fonts/AtkinsonHyperlegible-Bold.woff2') format('woff2');
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+
+/* ---------- variables ---------- */
+
+:root {
+  --dim: 0;
+  --grain-age: 0;
+  --grain-scroll: 0;          /* 0 at page top, 1 at bottom; adds to grain age */
+  --time-of-day: 0.5;
+  --error-tint: 0;
+
+  /* Wordmark Recursive axis state (set by JS) */
+  --word-wght: 620;
+  --word-casl: 0.85;
+  --word-mono: 0;
+  --word-slnt: 0;
+
+  /* Colors set by JS via OKLCH keyframe interpolation */
+  --bg: #f0eadf;
+  --ink: #1c1814;
+  --mute: #6e6a5d;
+  --signal: #7a3520;
+
+  /* Wordmark color tracks scroll position — set via CSS scroll-driven anim */
+  --word-color: var(--signal);
+
+  /* Fluid type scale (Utopia.fyi method, viewports 360-1240) */
+  --size-wordmark: clamp(2.2rem, 1.65rem + 2.45vw, 3.4rem);
+  --size-body:     clamp(1rem, 0.94rem + 0.27vw, 1.125rem);
+  --size-meta:     clamp(0.78rem, 0.755rem + 0.11vw, 0.86rem);
+  --size-headline: clamp(1.06rem, 0.985rem + 0.34vw, 1.22rem);
+  --size-prompt:   clamp(0.95rem, 0.925rem + 0.11vw, 1.02rem);
+
+  /* Fluid spacing scale */
+  --space-3xs: clamp(0.25rem, 0.22rem + 0.13vw, 0.31rem);
+  --space-2xs: clamp(0.5rem,  0.45rem + 0.22vw, 0.625rem);
+  --space-xs:  clamp(0.75rem, 0.675rem + 0.34vw, 0.94rem);
+  --space-s:   clamp(1rem,    0.89rem + 0.5vw,   1.25rem);
+  --space-m:   clamp(1.5rem,  1.33rem + 0.78vw,  1.9rem);
+  --space-l:   clamp(2rem,    1.75rem + 1.13vw,  2.55rem);
+  --space-xl:  clamp(3rem,    2.6rem + 1.81vw,   3.9rem);
+
+  /* Typography that drifts along --dim */
+  --track-body: calc(var(--dim) * 0.005em);
+  --track-meta: calc(var(--dim) * 0.012em);
+  --leading-body: calc(1.45 + var(--dim) * 0.06);
+  --leading-meta: calc(1.55 + var(--dim) * 0.05);
+  --rule-alpha: calc(0.3 + var(--dim) * 0.18);
+
+  --face-body: 'Atkinson Hyperlegible', system-ui, -apple-system, "Segoe UI", sans-serif;
+  --face-rec:  'Recursive', ui-sans-serif, system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+html {
+  /* Pull-down past top is a real overscroll, not a scroll-to-negative.
+   * We intercept it in JS for pull-to-refresh. */
+  overscroll-behavior-y: contain;
+}
+
+body {
+  font-family: var(--face-body);
+  font-size: var(--size-body);
+  line-height: var(--leading-body);
+  letter-spacing: var(--track-body);
+  background: var(--bg);
+  color: var(--ink);
+  max-width: 740px;
+  margin: 0 auto;
+  padding: 0 var(--space-s) var(--space-xl);
+  overflow-x: hidden;
+}
+
+a:link, a:visited { color: inherit; text-decoration: none; }
+a:hover, a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  outline: none;
+}
+
+html { scrollbar-width: none; }
+html::-webkit-scrollbar { width: 0; height: 0; display: none; }
+body::-webkit-scrollbar { width: 0; height: 0; display: none; }
+
+/* ---------- sticky header (wordmark + bar) ---------- */
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--bg);
+  padding: var(--space-s) 0 var(--space-2xs);
+  margin: 0 0 var(--space-s) 0;
+}
+
+.mark {
+  display: inline-flex;
+  align-items: baseline;
+  user-select: none;
+  width: 100%;
+  min-width: 0;
+}
+
+.word {
+  font-family: var(--face-rec);
+  font-size: var(--size-wordmark);
+  font-weight: 400;
+  font-variation-settings:
+    "wght" var(--word-wght),
+    "CASL" var(--word-casl),
+    "MONO" var(--word-mono),
+    "slnt" var(--word-slnt);
+  letter-spacing: -0.005em;
+  color: var(--word-color);
+  white-space: nowrap;
+  line-height: 0.95;
+  cursor: pointer;
+  filter: hue-rotate(calc(var(--error-tint) * -8deg));
+  transition:
+    color 0.6s ease,
+    opacity 0.3s ease,
+    filter 1.2s ease,
+    font-variation-settings 240ms cubic-bezier(0.4, 0.0, 0.2, 1);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+.word.is-pressing {
+  opacity: 0.7;
+  transition: opacity 220ms ease, font-variation-settings 220ms ease;
+}
+
+.mark.is-initial .word  { color: var(--mute); }
+
+.prompt {
+  font-family: var(--face-rec);
+  font-variation-settings: "wght" 400, "CASL" 0, "MONO" 1, "slnt" 0;
+  font-size: var(--size-prompt);
+  font-weight: 400;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--ink);
+  caret-color: var(--signal);
+  padding: 0;
+  margin: 0 0 0 0.5em;
+  width: 0;
+  min-width: 0.6em;
+  flex: 1;
+  letter-spacing: 0;
+  transition: opacity 360ms ease;
+}
+.prompt::placeholder { color: transparent; }
+
+/* ---------- chromatic bar ---------- */
+/* The bar IS the full --dim spectrum. The page bg is the cursor — the page's
+ * color matches a single point along the gradient. No notches at rest.
+ * On touch, a vertical light materializes at the current --dim position
+ * (scale-X transform for an optical reveal, not a fade). */
+
+.bar {
+  position: relative;
+  width: 100%;
+  height: 14px;
+  margin: var(--space-2xs) 0 0;
+  padding: 5px 0;
+  cursor: ew-resize;
+  outline: none;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.bar-track {
+  position: absolute;
+  left: 0; right: 0; top: 50%;
+  transform: translateY(-50%);
+  height: 4px;
+  background: linear-gradient(to right in oklch,
+    #ecdfca 0%, #e6d8bc 7%, #e0d094 14%, #d6a648 22%,
+    #c08624 30%, #b8662a 36%, #983e20 42%, #6e1e1c 46%,
+    #380a18 50%, #2a1428 55%, #1c1232 60%, #100c44 66%,
+    #0a124c 72%, #0a1c4c 78%, #0a2c34 84%, #0c1820 90%,
+    #0a0e14 96%, #07090c 100%
+  );
+  opacity: 0.55;
+  border-radius: 2px;
+  pointer-events: none;
+  /* Soft vertical fade so the bar dissolves into the page rather than
+   * sitting on it like applied chrome. */
+  mask-image: linear-gradient(to bottom,
+    transparent 0%,
+    #000 30%,
+    #000 70%,
+    transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom,
+    transparent 0%,
+    #000 30%,
+    #000 70%,
+    transparent 100%);
+  transition: opacity 240ms ease;
+}
+.bar:hover .bar-track { opacity: 0.75; }
+
+/* Initial entrance: the bar fills left-to-right on first paint */
+@keyframes bar-fill {
+  from { clip-path: inset(0 100% 0 0); }
+  to   { clip-path: inset(0 0 0 0); }
+}
+.first-paint .bar-track {
+  animation: bar-fill 800ms cubic-bezier(0.25, 0.1, 0.25, 1) 400ms both;
+}
+
+/* The cursor materializes via scale-X for an optical reveal. Off by default. */
+.bar-cursor {
+  position: absolute;
+  left: calc(var(--dim) * 100%);
+  top: 50%;
+  width: 2px;
+  height: 14px;
+  margin-left: -1px;
+  transform: translateY(-50%) scaleX(0);
+  transform-origin: center;
+  background: var(--ink);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform 320ms cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 320ms ease;
+}
+.bar.is-touched .bar-cursor {
+  transform: translateY(-50%) scaleX(1);
+  opacity: 0.85;
+  transition:
+    transform 180ms cubic-bezier(0.2, 0.6, 0.3, 1),
+    opacity 180ms ease;
+}
+.bar.is-dragging .bar-cursor {
+  background: var(--signal);
+  height: 16px;
+}
+
+/* ---------- pull-to-refresh ---------- */
+/* The sentinel sits at the very top of scrollable content. When the user
+ * pulls down past it (rubber-band overscroll), the spinner fades in and a
+ * fetch triggers on release. */
+
+.pull-refresh {
+  height: 1px;
+  margin: 0;
+  position: relative;
+  pointer-events: none;
+}
+.pull-refresh.is-pulling {
+  height: 40px;
+  transition: height 240ms ease;
+}
+.pull-refresh.is-pulling::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border: 1.5px solid var(--mute);
+  border-top-color: var(--signal);
+  border-radius: 50%;
+  animation: pull-spin 800ms linear infinite;
+}
+@keyframes pull-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ---------- stream ---------- */
+
+main {
+  position: relative;
+}
+
+article {
+  margin: 0 0 var(--space-s) 0;
+  padding-left: 0.6rem;
+  position: relative;
+  transition: opacity 0.4s ease, filter 0.4s ease;
+}
+
+article.is-read {
+  opacity: 0.62;
+  filter: saturate(0.78);
+}
+
+article.is-saved::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 1px;
+  height: 0.9em;
+  background: var(--signal);
+  border-radius: 0.5px;
+}
+
+/* Per-article chromatic time-tint. The source line's color is mixed toward
+ * signal at strength inversely proportional to article age. Most recent
+ * article: full tint. 24+ hours old: zero tint. */
+article {
+  --article-tint: 0;
+}
+article .src .t {
+  color: color-mix(in oklch, var(--mute), var(--signal) calc(var(--article-tint) * 55%));
+}
+
+/* First-paint entrance — articles emerge */
+@keyframes article-in {
+  from { opacity: 0; transform: translateY(3px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.first-load article {
+  animation: article-in 420ms ease-out backwards;
+}
+.first-load article:nth-of-type(1)  { animation-delay:   0ms; }
+.first-load article:nth-of-type(2)  { animation-delay:  35ms; }
+.first-load article:nth-of-type(3)  { animation-delay:  70ms; }
+.first-load article:nth-of-type(4)  { animation-delay: 105ms; }
+.first-load article:nth-of-type(5)  { animation-delay: 140ms; }
+.first-load article:nth-of-type(6)  { animation-delay: 175ms; }
+.first-load article:nth-of-type(7)  { animation-delay: 210ms; }
+.first-load article:nth-of-type(8)  { animation-delay: 245ms; }
+.first-load article:nth-of-type(9)  { animation-delay: 280ms; }
+.first-load article:nth-of-type(10) { animation-delay: 315ms; }
+
+/* New since last visit — single signal pulse on first paint */
+@keyframes new-pulse {
+  0%   { background-position: -100% 0; }
+  60%  { background-position: 200% 0; }
+  100% { background-position: 200% 0; }
+}
+.first-load article.is-new h2 {
+  background-image: linear-gradient(90deg,
+    transparent 0%,
+    color-mix(in oklch, var(--signal) 22%, transparent) 45%,
+    color-mix(in oklch, var(--signal) 38%, transparent) 50%,
+    color-mix(in oklch, var(--signal) 22%, transparent) 55%,
+    transparent 100%);
+  background-size: 50% 100%;
+  background-repeat: no-repeat;
+  background-position: -100% 0;
+  animation: new-pulse 1600ms ease-out forwards;
+  animation-delay: calc(var(--pulse-delay, 0) * 1ms);
+}
+
+h2 {
+  margin: 0 0 0.22rem 0;
+  font-family: var(--face-body);
+  font-size: var(--size-headline);
+  font-weight: 400;
+  line-height: 1.38;
+  letter-spacing: var(--track-body);
+  color: var(--ink);
+}
+h2 a:hover, h2 a:focus-visible {
+  color: var(--signal);
+  text-decoration: none;
+}
+
+.src {
+  font-family: var(--face-rec);
+  /* Default mono coordinates; per-article overrides set CASL by age. */
+  font-variation-settings: "wght" 400, "CASL" var(--src-casl, 0), "MONO" 1, "slnt" 0;
+  font-size: var(--size-meta);
+  line-height: var(--leading-meta);
+  letter-spacing: var(--track-meta);
+  color: var(--mute);
+  transition: font-variation-settings 1.2s ease;
+}
+.src .sep { margin: 0 0.35em; opacity: 0.55; }
+.src a {
+  color: var(--mute);
+  transition: color 200ms ease, font-variation-settings 200ms ease;
+}
+.src a:hover, .src a:focus-visible {
+  color: var(--ink);
+  font-variation-settings: "wght" 500, "CASL" var(--src-casl, 0), "MONO" 1, "slnt" 0;
+}
+
+.empty {
+  font-family: var(--face-rec);
+  font-variation-settings: "wght" 400, "CASL" 0, "MONO" 1, "slnt" 0;
+  font-size: 0.85rem;
+  color: var(--mute);
+  margin: 1.5rem 0;
+}
+
+/* ---------- focus mode ---------- */
+/* Activated by long-pressing the wordmark. Non-content surfaces fade. */
+
+body.is-focus-mode .bar { opacity: 0.15; pointer-events: none; }
+body.is-focus-mode .prompt { opacity: 0; pointer-events: none; }
+body.is-focus-mode .src { opacity: 0.4; }
+body.is-focus-mode .grain { opacity: calc((0.055 + var(--grain-age) * 0.045) * 0.5); }
+body.is-focus-mode .scroller { opacity: 0 !important; }
+body.is-focus-mode footer { opacity: 0; }
+body.is-focus-mode {
+  --word-wght: 540;
+  --word-casl: 0.6;
+}
+body, body .bar, body .prompt, body .src, body footer, body .scroller {
+  transition: opacity 360ms ease;
+}
+
+/* ---------- footer ---------- */
+
+footer {
+  margin-top: var(--space-l);
+  padding-top: 0.9rem;
+  border-top: 1px solid color-mix(in oklch, var(--mute) calc(var(--rule-alpha) * 100%), transparent);
+  font-family: var(--face-rec);
+  font-variation-settings: "wght" 400, "CASL" 0, "MONO" 1, "slnt" 0;
+  font-size: 0.72rem;
+  color: var(--mute);
+}
+
+/* ---------- grain ---------- */
+
+.grain {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 2;
+  /* Opacity rises with grain-age (fetch cycle) and grain-scroll (depth) */
+  opacity: calc(0.055 + var(--grain-age) * 0.045 + var(--grain-scroll) * 0.025);
+  mix-blend-mode: soft-light;
+  transition: opacity 600ms ease;
+}
+.grain svg { width: 100%; height: 100%; display: block; }
+
+/* ---------- vertical scroll slider ---------- */
+/* Invisible at rest. Synchronized opacity breath with wordmark weight breath
+ * during fetches. Materializes on scroll input. The gradient maps the 26h
+ * news buffer to chromatic keyframe positions. */
+
+.scroller {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 22px;
+  height: 100vh;
+  z-index: 18;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 600ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.scroller.is-breathing {
+  /* Breath synchronized with fetch-pulse: ~1.4s total, 0 → 0.18 → 0 */
+  animation: scroller-breath 1400ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+@keyframes scroller-breath {
+  0%, 100% { opacity: 0; }
+  40%      { opacity: 0.18; }
+}
+
+.scroller.is-active {
+  opacity: 0.42;
+  pointer-events: auto;
+}
+.scroller.is-dragging {
+  opacity: 0.62;
+  pointer-events: auto;
+}
+
+.scroller-track {
+  position: absolute;
+  top: 0;
+  right: 7px;
+  bottom: 0;
+  width: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to bottom in oklch,
+    #ecdfca 0%, #e6d8bc 7%, #e0d094 14%, #d6a648 22%,
+    #c08624 30%, #b8662a 36%, #983e20 42%, #6e1e1c 46%,
+    #380a18 50%, #2a1428 55%, #1c1232 60%, #100c44 66%,
+    #0a124c 72%, #0a1c4c 78%, #0a2c34 84%, #0c1820 90%,
+    #0a0e14 96%, #07090c 100%
+  );
+  /* Soft horizontal fade at edges */
+  mask-image: linear-gradient(to right,
+    transparent 0%, #000 30%, #000 70%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right,
+    transparent 0%, #000 30%, #000 70%, transparent 100%);
+}
+
+.scroller-thumb {
+  position: absolute;
+  right: 5px;
+  width: 8px;
+  height: 36px;
+  top: calc(var(--scroll-pct, 0) * (100vh - 36px));
+  background: var(--ink);
+  border-radius: 4px;
+  opacity: 0.7;
+  pointer-events: none;
+  transition: background-color 0.6s ease, opacity 240ms ease;
+}
+.scroller.is-dragging .scroller-thumb {
+  background: var(--signal);
+  opacity: 0.95;
+}
+
+/* ---------- colophon ---------- */
+/* Rises from the bottom on overscroll past the article list. */
+
+.colophon {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 30;
+  background: var(--bg);
+  border-top: 1px solid color-mix(in oklch, var(--mute) 40%, transparent);
+  transform: translateY(100%);
+  transition:
+    transform 420ms cubic-bezier(0.22, 0.6, 0.28, 1),
+    opacity 240ms ease;
+  opacity: 0;
+  pointer-events: none;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.colophon.is-open {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+.colophon.is-dragging {
+  transition: none;
+}
+
+.colophon-inner {
+  max-width: 740px;
+  margin: 0 auto;
+  padding: var(--space-s) var(--space-s) var(--space-m);
+  font-family: var(--face-body);
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--ink);
+}
+.colophon-inner p { margin: 0 0 0.55rem 0; }
+.colophon-inner p:last-child { margin-bottom: 0; }
+
+.colophon-title { font-size: 1rem; }
+.colophon-title strong {
+  font-family: var(--face-rec);
+  font-variation-settings: "wght" 620, "CASL" 0.85, "MONO" 0, "slnt" 0;
+  font-weight: 400;
+  color: var(--signal);
+}
+
+.colophon-rules {
+  font-style: italic;
+  color: var(--mute);
+  margin-bottom: 0.8rem !important;
+}
+
+.colophon-keys {
+  font-family: var(--face-rec);
+  font-variation-settings: "wght" 400, "CASL" 0, "MONO" 1, "slnt" 0;
+  font-size: 0.78rem;
+  color: var(--mute);
+  margin-top: 0.7rem !important;
+}
+.k-label {
+  display: inline-block;
+  min-width: 4.5em;
+  color: var(--ink);
+  opacity: 0.7;
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
+}
+.colophon kbd {
+  font-family: var(--face-rec);
+  font-variation-settings: "wght" 500, "CASL" 0, "MONO" 1, "slnt" 0;
+  font-size: 0.78rem;
+  padding: 0.05em 0.35em;
+  background: color-mix(in oklch, var(--mute) 16%, transparent);
+  border-radius: 2px;
+  color: var(--ink);
+}
+.colophon code {
+  font-family: var(--face-rec);
+  font-variation-settings: "wght" 400, "CASL" 0, "MONO" 1, "slnt" 0;
+  font-size: 0.82rem;
+  color: var(--signal);
+}
+.colophon-rss {
+  font-family: var(--face-rec);
+  font-variation-settings: "wght" 400, "CASL" 0, "MONO" 1, "slnt" 0;
+  font-size: 0.78rem;
+  color: var(--mute);
+}
+
+/* ---------- overscroll sentinel ---------- */
+
+.overscroll-sentinel {
+  height: 1px;
+  margin-top: var(--space-m);
+  pointer-events: none;
+}
+
+/* ---------- selection + focus ---------- */
+
+::selection {
+  background: var(--signal);
+  color: var(--bg);
+}
+
+a:focus-visible {
+  outline: none;
+  text-decoration: underline;
+  text-decoration-color: var(--signal);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+article.is-focused {
+  box-shadow: inset 2px 0 0 0 var(--signal);
+}
+
+/* ---------- reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .first-load article { animation: none !important; }
+  .first-load article.is-new h2 { animation: none !important; background: none !important; }
+  .scroller.is-breathing { animation: none !important; }
+  .first-paint .bar-track { animation: none !important; clip-path: none !important; }
+  .colophon, .word, .bar, .bar-cursor, .scroller, .scroller-thumb, .grain {
+    transition: opacity 0.1s ease !important;
+  }
+}

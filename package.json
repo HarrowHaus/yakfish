@@ -1,0 +1,28 @@
+{
+  "name": "public-wire-database",
+  "version": "1.0.0",
+  "description": "A brutally simple source-linked live headline database using public RSS and GDELT sources.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "node server.mjs",
+    "validate:feeds": "node scripts/validate-feeds.mjs",
+    "validate:news": "node scripts/validate-news.mjs",
+    "build:cache": "node scripts/build-static-cache.mjs",
+    "check": "node --check server.mjs && node --check api/news.js && node --check lib/build-news.js && node --check public/app.js && node --check netlify/functions/news.mjs && node --check scripts/archive-news.mjs",
+    "release:zip": "node scripts/make-release-zip.mjs",
+    "archive:news": "node scripts/archive-news.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "rss",
+    "news",
+    "directory",
+    "gdelt",
+    "static-site",
+    "serverless"
+  ],
+  "license": "MIT"
+}

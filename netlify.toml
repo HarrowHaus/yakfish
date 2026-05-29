@@ -1,0 +1,14 @@
+[build]
+  publish = "public"
+  command = "npm run build:cache"
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/api/news"
+  to = "/.netlify/functions/news"
+  status = 200
+
+[[headers]]
+  for = "/api/news"
+  [headers.values]
+    Cache-Control = "public, max-age=300, stale-while-revalidate=900"
