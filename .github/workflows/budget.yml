@@ -1,0 +1,22 @@
+name: shell-budget
+
+# Fails the build if the yak.fish shell (HTML+CSS+JS+fonts, excluding the news
+# payload) crosses the chosen leanness tripwire. Enforces the leanness *value* in
+# CLAUDE.md, not a sacred number — the ceiling is ours to move if leanness is served.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  budget:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Check shell budget
+        run: node scripts/check-budget.mjs
