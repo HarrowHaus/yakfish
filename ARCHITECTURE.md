@@ -29,6 +29,12 @@ seendate, language). Modes we use:
 - **`mode=ArtList`** — the article list. This produces the link tuples: title,
   url, domain (source), seendate (UTC), language. **This is the source of the
   stories in the river.** Keep `maxrecords` modest and paginate by time window.
+  **Rate limit (non-negotiable in the build):** GDELT enforces **one request per 5
+  seconds** (it returns `429` otherwise) and intermittently `503`s with no SLA.
+  Serialize the GDELT queries **≥5s apart** and wrap each in **retry-with-backoff that
+  treats 429/503 as soft failures** feeding the GDELT→RSS→last-good→JSONL fallback (§10).
+  Firing the ~10 queries in parallel will self-inflict 429s and starve clustering even
+  when GDELT is healthy.
 - **`mode=TimelineVol`** — proportion of global coverage matching a query over
   time. Returns a `norm` field = total articles GDELT monitored in the interval
   (the honest denominator). **Use only as an optional clustering hint (§1c, §3) —
@@ -139,6 +145,38 @@ seen/saved state breaks each refresh. The existing `stableHash` is the right too
 the story id from cluster-invariant content (e.g. `stableHash(dupeKey + earliest-day)`),
 **not** from array index or build timestamp. Per-record ids (already `stableHash(url|title|
 sourceId)`) stay as the host-level keys inside `sources[]`.
+
+### 3a. The zoom ladder is GDELT's own containment hierarchy (article ⊂ event ⊂ thread)
+
+The zoom levels (`PRODUCT.md`) are **not invented** — they read GDELT's native relational
+schema. The 15-min drop is three linked files: `gkg` (articles), `export` (events),
+`mentions` (the join). Each **GlobalEventID** maps to many mentions; each **article URL**
+(DocumentIdentifier) maps to mentions. That *is* the ladder:
+- **Article** = one GKG record / URL. (atom)
+- **Story = a GlobalEventID** — GDELT itself groups the articles covering one event via the
+  Mentions table. So "one event, N outlets" is **GDELT ground truth, not a heuristic.** The
+  dive reveals the hosts straight from Mentions. (Until the Events/Mentions ingestion lands,
+  the title-match `dupeKey` above is the honest stand-in for this level.)
+- **Thread = events linked over time** by shared entities + themes (GKG persons/orgs/
+  locations/themes + the co-occurring EventIDs per article). The **only constructed level** —
+  keep it conservative (under-merge; never merge on a single shared entity; **never use
+  tone/Goldstein/GCAM** — equal weight, no editorializing).
+
+**Two rules keep this from bloating:**
+1. **A level is a level only if it is strict containment** (many of the rung below, grouped).
+   Anything that isn't strict containment is a *different axis* and must not be a zoom level.
+2. **A level appears only where it merges something real** — an event with one article is not
+   a separate "story" from "raw"; a thread with one event is not separate from "story." Empty
+   rungs auto-collapse. So zoom only ever *reduces* (toward finishable), never pads.
+
+**Depth ≠ facet (the anti-bloat boundary).** GDELT **themes / CAMEO categories** are *facets*
+every article carries, not rungs on the containment ladder. "Everything about inflation" is a
+**filter pivot** (sideways), reachable from the filter/command surface — **not** a deeper
+zoom. Folding facet-jump into the zoom gesture overloads one control with two navigations;
+keep depth (pinch / containment) and facet (filter / command bar) orthogonal, each doing one
+thing. Note: CAMEO events are actor-action, so the event level is richest for *hard* news;
+soft/culture pieces often carry no EventID and stay at the article level — handled gracefully
+by rule 2, not a bug.
 
 ---
 

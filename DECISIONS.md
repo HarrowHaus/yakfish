@@ -131,7 +131,24 @@ Every element must serve a real, otherwise-unmet need that actually arises in us
 and take the most latent presence that need allows. By that test, the old fetch
 weight-breath and scroll-velocity slant are decorative (they encode nothing the
 person needs) and default to removal. The filter bar, the save gesture, and comfort
-all pass the test and stay.
+all pass the test and stay. The **notched zoom dial** also fails it — it spent pixels
+at rest to display a state the content already shows; cut in favor of a **gesture**
+(pinch on mobile; command bar + keyboard on desktop), zero at-rest chrome.
+
+## Zoom layers = GDELT-native containment; topic is a facet, not a depth — *why (anti-bloat)*
+
+The zoom levels read GDELT's own relational schema (`article ⊂ event ⊂ thread`):
+article = GKG record; **story = a GlobalEventID** (GDELT itself joins the covering
+articles via the Mentions table — ground truth, not our heuristic); thread = events
+linked over time by shared entities/themes (the only constructed level — conservative,
+never tone). Two rules prevent bloat: **(1)** a level counts only if it is *strict
+containment* (anything else is a different axis); **(2)** a level appears only where it
+*merges something real* (auto-collapse → no empty rungs; honest ~1 level until the
+GKG/Events ingestion lands). So zoom only ever *reduces* toward finishable.
+**Topic / CAMEO category is a facet, not a rung** — "everything about X" is a sideways
+*filter pivot* on the command surface, never a deeper zoom; folding it into the depth
+gesture would overload one control with two navigations. Depth (pinch/containment) and
+facet (filter) stay orthogonal. Details in `ARCHITECTURE.md` §3a. (See `PRODUCT.md`.)
 
 ## The name — *why yak.fish*
 
