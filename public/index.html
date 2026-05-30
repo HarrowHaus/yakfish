@@ -6,9 +6,9 @@
 <title>yak.fish</title>
 <meta name="description" content="A chronological, finishable, accountless reader for public news links.">
 <meta name="color-scheme" content="light dark">
-<link rel="preload" href="fonts/Recursive-Variable.woff2?v=15" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="fonts/AtkinsonHyperlegible-Regular.woff2?v=15" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="styles.css?v=15">
+<link rel="preload" href="fonts/Recursive-Variable.woff2?v=16" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/AtkinsonHyperlegible-Regular.woff2?v=16" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="styles.css?v=16">
 </head>
 <body>
 
@@ -22,15 +22,16 @@
                                                    autocomplete="off" spellcheck="false"
                                                    autocapitalize="off" autocorrect="off"
                                                    enterkeyhint="search" inputmode="search"
-                                                   aria-label="filter and commands — text, @source, @section, @saved, -@source to mute, zoom raw/stories/clusters">
+                                                   aria-label="filter and commands — text, @source, @section, @saved, -@source to mute, zoom raw/stories/threads">
   </div>
 
-  <!-- Zoom / density dial — three detents: raw · stories (default) · clusters.
-       Latent at rest; the current detent is the lit notch. -->
-  <div class="zoom" id="zoom" role="radiogroup" aria-label="zoom — granularity and density">
-    <button class="zoom-notch" data-zoom="raw"      role="radio" aria-checked="false" aria-label="raw headlines" type="button"></button>
-    <button class="zoom-notch" data-zoom="stories"  role="radio" aria-checked="true"  aria-label="deduped stories" type="button"></button>
-    <button class="zoom-notch" data-zoom="clusters" role="radio" aria-checked="false" aria-label="topic clusters" type="button"></button>
+  <!-- Zoom = depth in the hierarchy: raw (0) · stories (1, default) · threads (2).
+       A stop shows only when it changes the view; threads is stubbed until the GKG
+       track, so it auto-collapses out for now. -->
+  <div class="zoom" id="zoom" role="radiogroup" aria-label="zoom — depth in the story hierarchy">
+    <button class="zoom-notch" data-zoom="raw"      role="radio" aria-checked="false" aria-label="raw — articles" type="button"></button>
+    <button class="zoom-notch" data-zoom="stories"  role="radio" aria-checked="true"  aria-label="stories — events" type="button"></button>
+    <button class="zoom-notch" data-zoom="threads"  role="radio" aria-checked="false" aria-label="threads (coming with GKG)" type="button" hidden></button>
   </div>
 </header>
 
@@ -42,8 +43,8 @@
 
 <footer><small id="status">&mdash;</small></footer>
 
-<!-- Transient chromatic track — surfaces only WHILE dragging the wordmark to adjust
-     --dim, and dissolves on release. Zero at-rest footprint (DESIGN.md). -->
+<!-- Transient day-scrub track — a horizontal spectrum that surfaces only WHILE dragging
+     the wordmark left↔right to scrub the day, and dissolves on release (DESIGN.md). -->
 <div class="dim-track" id="dim-track" aria-hidden="true"></div>
 
 <!-- The colophon. Reached by pushing past the floor of the river, or via ? .
@@ -54,7 +55,7 @@
 
     <p class="colophon-rules">descend the river to the new/old line · dive a story to its hosts · leave to the source · each line is one story across every host</p>
 
-    <p>Set in Recursive Variable at yak.fish's wordmark coordinates (wght 620, casl 0.85, mono 0) and Atkinson Hyperlegible. Composed in vanilla HTML, CSS, and JavaScript.</p>
+    <p>Set in Recursive Variable at yak.fish's wordmark coordinates (wght 540, casl 0, mono 0.55) and Atkinson Hyperlegible. Composed in vanilla HTML, CSS, and JavaScript.</p>
 
     <p>No tracking. No accounts. No ads. Designed to last.</p>
 
@@ -67,16 +68,16 @@
       drag the river → snap a reach (crossing marks seen, drag back to undo) ·
       tap a story → hosts, then the source in a new tab ·
       tap wordmark → refresh · double-tap → filter · long-press → focus ·
-      drag wordmark → dim · long-press a story → save · long-press a host → mute</p>
+      drag wordmark ↔ → scrub the day · long-press a story → save · long-press a host → mute</p>
 
     <p class="colophon-keys"><span class="k-label">filter</span>
       plain text · <code>@source</code> · <code>@section</code> · <code>@saved</code> ·
-      <code>-@source</code> mute · <code>zoom raw|stories|clusters</code></p>
+      <code>-@source</code> mute · <code>zoom raw|stories|threads</code></p>
 
     <p class="colophon-rss">RSS / JSON — <code>/cache/latest.json</code></p>
   </div>
 </div>
 
-<script src="app.js?v=15" defer></script>
+<script src="app.js?v=16" defer></script>
 </body>
 </html>

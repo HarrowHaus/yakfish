@@ -16,7 +16,11 @@
   const POLL_MS = 60_000;
   const BUFFER_HOURS = 26;
   const STOP = new Set(['the','a','an','live','update','updates','breaking','and','of','in','on','to','for']);
-  const ZOOMS = ['raw', 'stories', 'clusters'];
+
+  /* Zoom = depth in the story hierarchy (PRODUCT.md): raw=0 / stories=1 / threads=2
+     dive layers. A stop is offered only when it changes the view; threads is stubbed
+     until the GKG track lands, so it auto-collapses out for now. */
+  const ZOOMS = ['raw', 'stories', 'threads'];
 
   /* Reach-traverse tuning (in-hand feel; OPEN_QUESTIONS A). */
   const DRAG_SLOP = 8;        // px before a press becomes a drag
@@ -24,27 +28,23 @@
   const DAMP = 0.6;           // drag resistance (no momentum carry)
   const REACH_OVERLAP = 0.12; // context carried between reaches
 
-  /* 18 OKLCH keyframes. Interpolated in CSS via color-mix. */
-  const KEYFRAMES = [
-    { at: 0.00, bg: '#ecdfca', ink: '#2c1e12', mute: '#7c6a52', signal: '#7a2e18' },
-    { at: 0.07, bg: '#e6d8bc', ink: '#2a1d10', mute: '#766548', signal: '#762d16' },
-    { at: 0.14, bg: '#e0d094', ink: '#3a2c14', mute: '#6e5e3a', signal: '#722c14' },
-    { at: 0.22, bg: '#d6a648', ink: '#2e1c0c', mute: '#5e4e2a', signal: '#5e2310' },
-    { at: 0.30, bg: '#c08624', ink: '#281606', mute: '#544022', signal: '#56200e' },
-    { at: 0.36, bg: '#b8662a', ink: '#1e0c04', mute: '#4a3220', signal: '#4a1808' },
-    { at: 0.42, bg: '#983e20', ink: '#160a04', mute: '#3e2418', signal: '#3a1004' },
-    { at: 0.46, bg: '#6e1e1c', ink: '#100404', mute: '#3a1c18', signal: '#d04428' },
-    { at: 0.50, bg: '#380a18', ink: '#ecd4a4', mute: '#a8927c', signal: '#e07840' },
-    { at: 0.55, bg: '#2a1428', ink: '#d8c498', mute: '#a08068', signal: '#dc7034' },
-    { at: 0.60, bg: '#1c1232', ink: '#cebca0', mute: '#988068', signal: '#d06830' },
-    { at: 0.66, bg: '#100c44', ink: '#b8b09c', mute: '#908068', signal: '#c8642c' },
-    { at: 0.72, bg: '#0a124c', ink: '#b4aaa0', mute: '#908068', signal: '#c0602a' },
-    { at: 0.78, bg: '#0a1c4c', ink: '#b0a89c', mute: '#8c7c64', signal: '#bc5e28' },
-    { at: 0.84, bg: '#0a2c34', ink: '#aca890', mute: '#7c7058', signal: '#b85a26' },
-    { at: 0.90, bg: '#0c1820', ink: '#aca890', mute: '#807060', signal: '#b05828' },
-    { at: 0.96, bg: '#0a0e14', ink: '#a09c84', mute: '#786c5c', signal: '#ac5626' },
-    { at: 1.00, bg: '#07090c', ink: '#98947c', mute: '#706858', signal: '#a85226' }
+  /* The circadian curve — the BAKED OKLCH anchors from DESIGN.md (the output of the
+     build-time Planckian + appearance-model derivation). The runtime is a lean one-
+     scalar engine: it color-mixes between the two anchors bracketing the local clock
+     hour. No color library, no appearance model on the page. Warm hue always; chroma a
+     whisper; ink polarity flips across the day (light-on-dark night → dark-on-light
+     day) because the baked ink anchors already encode it. Hours wrap 22→02. */
+  const ANCHORS = [
+    { h: 2.0,  bg: 'oklch(0.17 0.022 60)', ink: 'oklch(0.72 0.018 70)' }, // deep night ~2200K
+    { h: 5.5,  bg: 'oklch(0.44 0.030 52)', ink: 'oklch(0.30 0.016 50)' }, // dawn ~2700K (cool-of-warm)
+    { h: 9.0,  bg: 'oklch(0.93 0.012 85)', ink: 'oklch(0.25 0.010 80)' }, // morning ~5000K warm paper
+    { h: 12.5, bg: 'oklch(0.95 0.008 88)', ink: 'oklch(0.22 0.008 80)' }, // midday ~5500K (peak ΔL)
+    { h: 15.5, bg: 'oklch(0.88 0.020 78)', ink: 'oklch(0.27 0.014 72)' }, // afternoon ~4500K (the lean)
+    { h: 19.0, bg: 'oklch(0.58 0.045 65)', ink: 'oklch(0.26 0.020 60)' }, // golden dusk ~3000K (P3 reach)
+    { h: 22.0, bg: 'oklch(0.30 0.030 60)', ink: 'oklch(0.74 0.020 70)' }  // evening ~2400K (diminuendo)
   ];
+  // Append the wrap anchor (next-day deep night at h+24) so 22:00→02:00 interpolates.
+  const ANCH = [...ANCHORS, { h: ANCHORS[0].h + 24, bg: ANCHORS[0].bg, ink: ANCHORS[0].ink }];
 
   const state = {
     endpoint: null,
@@ -52,9 +52,8 @@
     zoom: 'stories',
     updatedAt: null,
     isFetching: false,
-    dim: 0.5,
-    dimOverridden: false,
-    timeOfDay: 0.5,
+    dimHour: 12,            // the hour the page is painted at (auto = local clock)
+    dimOverridden: false,   // session-scoped manual scrub; never persisted
     firstRendered: false,
     isFocusMode: false,
     isColophonOpen: false,
@@ -128,60 +127,36 @@
   function persistMuted() { try { localStorage.setItem('yakfish.muted', JSON.stringify([...state.mutedSet])); } catch (_) {} }
   function persistVisit() { try { localStorage.setItem('yakfish.lastVisit', new Date().toISOString()); } catch (_) {} }
 
-  /* ---------- dim / chromatic (auto from clock; page bg IS the state) ---------- */
+  /* ---------- dim / chromatic — continuous circadian curve off the local clock ----------
+     The page background IS the dim state. Only bg + ink are set here (color), never any
+     layout metric — so a day-scrub can never reflow under the finger. ink/mute/signal/
+     borders derive from --bg/--ink in CSS via relative color; the runtime just picks the
+     two baked anchors bracketing the hour and color-mixes them. */
 
-  function findSegment(d) {
-    for (let i = 0; i < KEYFRAMES.length - 1; i++) {
-      if (d >= KEYFRAMES[i].at && d <= KEYFRAMES[i + 1].at) return [KEYFRAMES[i], KEYFRAMES[i + 1]];
+  const clockHour = () => { const n = new Date(); return n.getHours() + n.getMinutes() / 60; };
+  const mix = (a, b, f) => `color-mix(in oklch, ${a}, ${b} ${(clamp(f, 0, 1) * 100).toFixed(1)}%)`;
+
+  function dimColors(hour) {
+    let hh = ((hour % 24) + 24) % 24;       // normalise to [0,24)
+    if (hh < ANCH[0].h) hh += 24;           // wrap pre-dawn hours into the 22→26 segment
+    for (let i = 0; i < ANCH.length - 1; i++) {
+      const a = ANCH[i], b = ANCH[i + 1];
+      if (hh >= a.h && hh <= b.h) {
+        const f = (hh - a.h) / (b.h - a.h);
+        return { bg: mix(a.bg, b.bg, f), ink: mix(a.ink, b.ink, f) };
+      }
     }
-    return [KEYFRAMES[KEYFRAMES.length - 1], KEYFRAMES[KEYFRAMES.length - 1]];
+    return { bg: ANCHORS[0].bg, ink: ANCHORS[0].ink };
   }
-  function applyDim(d) {
-    const c = clamp(d, 0, 1);
-    state.dim = c;
-    root.style.setProperty('--dim', String(c));
-    const [lo, hi] = findSegment(c);
-    const span = hi.at - lo.at;
-    const t = span > 0 ? (c - lo.at) / span : 0;
-    const pct = (t * 100).toFixed(2);
-    root.style.setProperty('--bg',     `color-mix(in oklch, ${lo.bg}, ${hi.bg} ${pct}%)`);
-    root.style.setProperty('--ink',    `color-mix(in oklch, ${lo.ink}, ${hi.ink} ${pct}%)`);
-    root.style.setProperty('--mute',   `color-mix(in oklch, ${lo.mute}, ${hi.mute} ${pct}%)`);
-    root.style.setProperty('--signal', `color-mix(in oklch, ${lo.signal}, ${hi.signal} ${pct}%)`);
-  }
-  function mapHoursToDim(h) {
-    const anchors = [[0,0.92],[3,0.98],[5,0.02],[8,0.14],[12,0.32],[15,0.40],[18,0.50],[21,0.66],[24,0.92]];
-    for (let i = 0; i < anchors.length - 1; i++) {
-      const [h1, v1] = anchors[i], [h2, v2] = anchors[i + 1];
-      if (h >= h1 && h <= h2) return v1 + (v2 - v1) * ((h - h1) / (h2 - h1));
-    }
-    return 0.5;
-  }
-  function computeTimeOfDay() {
-    const now = new Date();
-    return mapHoursToDim(now.getHours() + now.getMinutes() / 60);
-  }
-  function updateTimeOfDay() {
-    state.timeOfDay = computeTimeOfDay();
-    root.style.setProperty('--time-of-day', String(state.timeOfDay));
-  }
-  function signalAtDim(d) {
-    const [lo, hi] = findSegment(d);
-    const span = hi.at - lo.at;
-    const t = span > 0 ? (d - lo.at) / span : 0;
-    return `color-mix(in oklch, ${lo.signal}, ${hi.signal} ${(t * 100).toFixed(2)}%)`;
-  }
-  function updateWordmarkColor() {
-    const arts = $('river').querySelectorAll('article');
-    let topTime = null;
-    const riverTop = state.reaches[state.reachIndex] || 0;
-    for (const a of arts) {
-      if (a.offsetTop + a.offsetHeight > riverTop + 4) { topTime = a.getAttribute('data-time'); break; }
-    }
-    if (!topTime) { root.style.setProperty('--word-color', 'var(--signal)'); return; }
-    const date = new Date(topTime);
-    if (isNaN(date.getTime())) return;
-    root.style.setProperty('--word-color', signalAtDim(mapHoursToDim(date.getHours() + date.getMinutes() / 60)));
+
+  // Paint the page at a given clock hour. --t (0→1 day phase) is the single scalar; the
+  // wordmark and the scrub track read it. Color only — no layout touched.
+  function applyDim(hour) {
+    state.dimHour = hour;
+    const { bg, ink } = dimColors(hour);
+    root.style.setProperty('--bg', bg);
+    root.style.setProperty('--ink-auto', ink);
+    root.style.setProperty('--t', ((((hour % 24) + 24) % 24) / 24).toFixed(4));
   }
 
   /* ---------- wordmark: tap / double-tap / long-press / drag-to-dim ---------- */
@@ -191,11 +166,11 @@
     const track = $('dim-track');
     if (!word) return;
     let pressed = false, pressTimer = null, pendingTap = null, lastTap = 0;
-    let didLong = false, dragging = false, startY = 0, baseDim = 0;
+    let didLong = false, dragging = false, startX = 0, baseHour = 0;
 
     word.addEventListener('pointerdown', (e) => {
       pressed = true; didLong = false; dragging = false;
-      startY = e.clientY; baseDim = state.dim;
+      startX = e.clientX; baseHour = state.dimHour;
       word.classList.add('is-pressing');
       try { word.setPointerCapture(e.pointerId); } catch (_) {}
       pressTimer = setTimeout(() => {
@@ -206,19 +181,24 @@
 
     word.addEventListener('pointermove', (e) => {
       if (!pressed) return;
-      const dy = e.clientY - startY;
-      if (!dragging && Math.abs(dy) > DRAG_SLOP) {
+      const dx = e.clientX - startX;
+      if (!dragging && Math.abs(dx) > DRAG_SLOP) {
         dragging = true; clearTimeout(pressTimer);
         word.classList.remove('is-pressing'); word.classList.add('is-dimming');
+        document.documentElement.classList.add('is-scrubbing');   // live, no tween under the finger
         track.classList.add('is-active');
       }
       if (dragging) {
-        // Drag down = warmer/dimmer (toward night); drag up = cooler/brighter.
-        let next = clamp(baseDim + dy / Math.max(240, window.innerHeight * 0.7), 0, 1);
-        // Felt detent: snap to the automatic clock value when close (hand control back).
-        if (Math.abs(next - state.timeOfDay) < 0.03) next = state.timeOfDay;
-        applyDim(next);
-        updateWordmarkColor();
+        // Horizontal because it is TIME, and time reads horizontally: left ← dawn,
+        // right → night. Full window width ≈ one full day of scrub.
+        let h = baseHour + (dx / Math.max(320, window.innerWidth)) * 24;
+        // Felt detent: snap to the live clock hour when close (hands control back).
+        const ch = clockHour();
+        let delta = ((h - ch + 12) % 24 + 24) % 24 - 12;
+        const snapped = Math.abs(delta) < 0.35;
+        if (snapped) h = ch;
+        applyDim(h);
+        state._scrubSnapped = snapped;
       }
     });
 
@@ -227,7 +207,14 @@
       pressed = false; clearTimeout(pressTimer);
       try { word.releasePointerCapture(e.pointerId); } catch (_) {}
       word.classList.remove('is-pressing', 'is-dimming');
-      if (dragging) { track.classList.remove('is-active'); dragging = false; state.dimOverridden = true; return; } // session-scoped, NOT persisted
+      if (dragging) {
+        track.classList.remove('is-active');
+        document.documentElement.classList.remove('is-scrubbing');
+        dragging = false;
+        // Snapping to the clock hands control back to automatic (no "return" button needed).
+        state.dimOverridden = !state._scrubSnapped;
+        return; // session-scoped, NEVER persisted
+      }
       if (didLong) return;
       const now = Date.now();
       const dbl = (now - lastTap) < 320;
@@ -276,7 +263,7 @@
     });
   }
 
-  // Enter runs folded commands: -@source mutes, `zoom raw|stories|clusters` sets density.
+  // Enter runs folded commands: -@source mutes, `zoom raw|stories|threads` sets depth.
   function runCommand(input) {
     const raw = input.value.trim();
     const low = raw.toLowerCase();
@@ -284,7 +271,7 @@
     if ((m = low.match(/^-\s*@?\s*(.+)$/))) {
       toggleMute(m[1].trim()); input.value = ''; state.query = ''; render(); updateHash(); return;
     }
-    if ((m = low.match(/^(?:zoom|>)\s*:?\s*(raw|stories|clusters)$/))) {
+    if ((m = low.match(/^(?:zoom|>)\s*:?\s*(raw|stories|threads)$/))) {
       setZoom(m[1]); input.value = ''; state.query = ''; render(); updateHash(); return;
     }
     state.query = raw; render(); updateHash();
@@ -297,26 +284,59 @@
     persistMuted();
   }
 
-  /* ---------- zoom / density dial ---------- */
+  /* ---------- zoom = depth in the hierarchy (raw/stories/threads = 0/1/2 layers) ---------- */
+
+  // A stop is offered ONLY when it changes the view (no empty/redundant cluster layer):
+  //  - 'stories' is the spine (the deduped river).
+  //  - 'raw' appears only if un-clustering actually splits something (a multi-host story).
+  //  - 'threads' is STUBBED until the GKG track — it never changes the view yet, so it
+  //    auto-collapses out. (No section-as-thread faking of depth.)
+  function availableZooms() {
+    const stories = [...state.stories.values()].filter((s) => storyVisibleSources(s).length);
+    const multi = stories.some((s) => storyVisibleSources(s).length > 1);
+    const out = [];
+    if (multi) out.push('raw');          // raw differs from stories only when something merged
+    out.push('stories');
+    // 'threads' intentionally omitted until GKG themes make it change the view.
+    return out;
+  }
 
   function bindZoom() {
     const zoom = $('zoom');
     if (!zoom) return;
     zoom.addEventListener('click', (e) => {
       const btn = e.target.closest('.zoom-notch');
-      if (!btn) return;
+      if (!btn || btn.hasAttribute('hidden')) return;
       setZoom(btn.getAttribute('data-zoom'));
       updateHash();
     });
   }
   function setZoom(z) {
-    if (!ZOOMS.includes(z) || z === state.zoom) { reflectZoom(); return; }
-    state.zoom = z; state.diveId = null; reflectZoom(); render();
+    const avail = availableZooms();
+    if (!avail.includes(z)) z = avail.includes('stories') ? 'stories' : avail[0];
+    if (z === state.zoom) { reflectZoom(); return; }
+    // Zooming OUT (fewer layers, lines merge into parents) is a felt merge.
+    if (ZOOMS.indexOf(z) > ZOOMS.indexOf(state.zoom)) flagMerge();
+    state.zoom = z; state.diveId = null; render();
   }
   function reflectZoom() {
-    for (const btn of $('zoom').querySelectorAll('.zoom-notch')) {
-      btn.setAttribute('aria-checked', String(btn.getAttribute('data-zoom') === state.zoom));
+    const avail = availableZooms();
+    if (!avail.includes(state.zoom)) state.zoom = avail.includes('stories') ? 'stories' : avail[0];
+    const zoomEl = $('zoom');
+    for (const btn of zoomEl.querySelectorAll('.zoom-notch')) {
+      const z = btn.getAttribute('data-zoom');
+      const on = avail.includes(z);
+      btn.toggleAttribute('hidden', !on);              // auto-collapse unavailable stops
+      btn.setAttribute('aria-checked', String(z === state.zoom));
     }
+    // The dial only earns its pixels when there is more than one stop to choose.
+    zoomEl.toggleAttribute('hidden', avail.length < 2);
+  }
+  // The merge cue: a brief settle on the river (gated by reduced-motion in CSS).
+  function flagMerge() {
+    const river = $('river');
+    river.classList.remove('merging'); void river.offsetWidth; river.classList.add('merging');
+    setTimeout(() => river.classList.remove('merging'), 320);
   }
 
   /* ---------- URL view-state (filter + zoom + section; never read/saved) ---------- */
@@ -399,8 +419,9 @@
     }
     visible.sort((a, b) => tms(b.s.time) - tms(a.s.time));
 
-    let entries = [];
+    const entries = [];
     if (state.zoom === 'raw') {
+      // 0 dive layers: one line per article (source); tap → straight to the source.
       for (const { s, sources } of visible) {
         for (const src of sources) {
           entries.push({ id: `${s.id}:${src.host}`, storyId: s.id, headline: s.headline, time: src.time || s.time,
@@ -408,20 +429,9 @@
         }
       }
       entries.sort((a, b) => tms(b.time) - tms(a.time));
-    } else if (state.zoom === 'clusters') {
-      const bySection = new Map();
-      for (const v of visible) {
-        const k = v.s.section || 'UNFILED';
-        if (!bySection.has(k)) bySection.set(k, []);
-        bySection.get(k).push(v);
-      }
-      for (const [section, list] of bySection) {
-        const top = list[0];
-        entries.push({ id: `cluster:${section}`, storyId: top.s.id, headline: top.s.headline, time: top.s.time,
-          section, sources: top.sources, primaryUrl: top.sources[0].url, depth: top.sources.length, clusterCount: list.length });
-      }
-      entries.sort((a, b) => tms(b.time) - tms(a.time));
     } else {
+      // 1 dive layer (stories): one line per event; tap → its hosts → source.
+      // 'threads' (2 layers) is stubbed to this until the GKG track lands — no faked depth.
       for (const { s, sources } of visible) {
         entries.push({ id: s.id, storyId: s.id, headline: s.headline, time: s.time,
           section: s.section, sources, primaryUrl: sources[0].url, depth: sources.length });
@@ -466,22 +476,19 @@
     layoutReaches();
     goToReach(clamp(state.reachIndex, 0, state.reaches.length - 1), false);
     updateStatus();
-    updateWordmarkColor();
+    reflectZoom();
   }
 
   function renderEntry(e) {
     const head = cleanTitle(e.headline);
     const time = fmtTime(e.time);
-    const ageH = Math.max(0, (Date.now() - tms(e.time)) / 3600_000);
-    const casl = Math.min(0.7, ageH / 24).toFixed(3);
-    const tint = Math.max(0, 1 - ageH / 24).toFixed(3);
     const isRead = state.readSet.has(e.storyId);
     const isSaved = state.savedSet.has(e.storyId);
     const cls = ['', isRead ? ' is-read' : '', isSaved ? ' is-saved' : ''].join('');
-    const depthMark = e.depth > 1 ? `<span class="depth" aria-hidden="true">${'·'.repeat(Math.min(4, e.depth))}</span>` : '';
-    const sectionTag = state.zoom === 'clusters' ? `<span class="host">${esc(e.section.toLowerCase())} · ${e.clusterCount}</span><span class="sep">·</span>` : '';
     const firstHost = e.sources[0] ? esc(e.sources[0].host) : '';
 
+    // Depth (host count) is FELT through the dive, never displayed as a count/badge
+    // (PRODUCT.md, DESIGN.md equal weight). The hosts panel only appears on a dive tap.
     let hosts = '';
     if (e.depth > 1) {
       const links = e.sources.map((src) =>
@@ -490,9 +497,11 @@
       hosts = `<div class="hosts"><div class="hosts-label">${e.depth} hosts carried this — tap one to leave</div>${links}</div>`;
     }
 
-    return `<article class="${cls.trim()}" data-id="${esc(e.id)}" data-story="${esc(e.storyId)}" data-time="${esc(e.time)}" style="--src-casl:${casl};--article-tint:${tint}">
+    // Time/host are DATA (MONO 1 via CSS). Headline is reading text (Atkinson). No axis
+    // animates; recency is carried by chronological position, not a decaying tint.
+    return `<article class="${cls.trim()}" data-id="${esc(e.id)}" data-story="${esc(e.storyId)}" data-time="${esc(e.time)}">
 <h2><a class="head" href="${esc(e.primaryUrl)}" target="_blank" rel="noopener noreferrer">${esc(head)}</a></h2>
-<div class="src">${sectionTag}<span class="t">${esc(time)}</span><span class="sep">·</span><span class="host">${firstHost}</span>${depthMark}</div>
+<div class="src"><span class="t">${esc(time)}</span><span class="sep">·</span><span class="host">${esc(firstHost)}</span></div>
 ${hosts}
 </article>`;
   }
@@ -550,7 +559,6 @@ ${hosts}
     if (!animate || reduced()) { void river.offsetWidth; river.style.transition = ''; }
     markSeenThrough(state.reaches[i]);
     if (i !== prev && animate) buzz(state.lineReachIndex != null && i === state.lineReachIndex ? 16 : 8);
-    updateWordmarkColor();
   }
 
   // Optimistic, reversible seen-marking: stories scrolled above the viewport top are
@@ -719,7 +727,11 @@ ${hosts}
       const tag = (document.activeElement?.tagName || '').toLowerCase();
       if (['input', 'textarea', 'select'].includes(tag)) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (state.isColophonOpen) { if (e.key === 'Escape') { closeColophon(); e.preventDefault(); } return; }
+      // Colophon retracts on an up-gesture (mirrors its reveal); Esc also closes it.
+      if (state.isColophonOpen) {
+        if (['Escape', 'ArrowUp', 'PageUp', 'k'].includes(e.key)) { closeColophon(); e.preventDefault(); }
+        return;
+      }
 
       if (e.key === '/') { $('prompt').focus(); e.preventDefault(); return; }
       if (e.key === ' ' || e.key === 'PageDown' || e.key === 'ArrowDown') { advance(true); e.preventDefault(); return; }
@@ -781,9 +793,7 @@ ${hosts}
     migrateStorage();
     loadPersisted();
     readHash();
-    reflectZoom();
-    updateTimeOfDay();
-    applyDim(computeTimeOfDay());   // session-scoped auto-dim; never persisted
+    applyDim(clockHour());          // session-scoped auto-dim off the local clock; never persisted
 
     bindWordmark();
     bindPrompt();
@@ -797,8 +807,8 @@ ${hosts}
     setMark('initial');
     tick();
     setInterval(tick, POLL_MS);
-    setInterval(updateTimeOfDay, 60_000);
-    setInterval(() => { if (!state.dimOverridden) applyDim(state.timeOfDay); }, 5 * 60_000); // drift bg with the clock unless overridden this session
+    // Continuous by the minute: re-paint to the clock unless the day has been scrubbed.
+    setInterval(() => { if (!state.dimOverridden) applyDim(clockHour()); }, 60_000);
 
     const visit = () => persistVisit();
     window.addEventListener('beforeunload', visit);

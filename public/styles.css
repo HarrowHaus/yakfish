@@ -38,20 +38,31 @@
 
 /* ---------- variables ---------- */
 
+/* The day-phase scalar and the two JS-set anchors, registered so they are typed and
+   (where supported) tween natively. --bg/--ink-auto are color-mixes of the baked
+   OKLCH anchors; everything else derives from them in CSS. */
+@property --t        { syntax: '<number>'; inherits: true; initial-value: 0.5; }
+@property --bg       { syntax: '<color>';  inherits: true; initial-value: oklch(0.95 0.008 88); }
+@property --ink-auto { syntax: '<color>';  inherits: true; initial-value: oklch(0.22 0.008 80); }
+
 :root {
-  --dim: 0;
-  --time-of-day: 0.5;
+  --t: 0.5;                       /* day phase 0→1 (00:00→24:00), set by JS off the clock */
 
-  /* Wordmark Recursive axis state (set by JS). slnt stays 0 — scroll-slant removed. */
-  --word-wght: 620;
-  --word-casl: 0.85;
-  --word-mono: 0;
+  /* Wordmark preset (DESIGN.md, revised): medium weight, linear, a monospace lean. */
+  --word-wght: 540;
+  --word-casl: 0;
+  --word-mono: 0.55;
 
-  /* Colors set by JS via OKLCH keyframe interpolation */
-  --bg: #f0eadf;
-  --ink: #1c1814;
-  --mute: #6e6a5d;
-  --signal: #7a3520;
+  /* The circadian colors. JS sets only --bg + --ink-auto (color); the rest derive here
+     via relative color / color-mix, so the composition rules hold automatically. */
+  --bg: oklch(0.95 0.008 88);
+  --ink-auto: oklch(0.22 0.008 80);
+  --ink: var(--ink-auto);
+  --mute: color-mix(in oklch, var(--ink), var(--bg) 42%);
+  /* One near-analogous accent: at the ink's lightness (Helmholtz–Kohlrausch glow, lit
+     not brighter), a whisper-to-signal chroma, hue nudged a touch toward gold. */
+  --signal: oklch(from var(--ink) l 0.12 calc(h - 6));
+  --rule: color-mix(in oklch, var(--mute), transparent 55%);
   --word-color: var(--signal);
 
   /* The river pager offset (unitless px magnitude; translated upward) */
@@ -74,24 +85,48 @@
   --space-l:   clamp(2rem,    1.75rem + 1.13vw,  2.55rem);
   --space-xl:  clamp(3rem,    2.6rem + 1.81vw,   3.9rem);
 
-  /* Typography that drifts along --dim */
-  --track-body: calc(var(--dim) * 0.005em);
-  --track-meta: calc(var(--dim) * 0.012em);
-  --leading-body: calc(1.45 + var(--dim) * 0.06);
-  --leading-meta: calc(1.55 + var(--dim) * 0.05);
-  --rule-alpha: calc(0.3 + var(--dim) * 0.18);
+  /* CONSTANTS — never tied to --dim. Dim is light, not layout: nothing here may reflow
+     under the day-scrub (DESIGN.md "the furniture does not move"). */
+  --track-body: 0em;
+  --track-meta: 0.01em;
+  --leading-body: 1.5;
+  --leading-meta: 1.55;
 
-  /* The chromatic spectrum (used only by the transient dim-track while dragging). */
-  --spectrum: linear-gradient(to bottom in oklch,
-    #ecdfca 0%, #e6d8bc 7%, #e0d094 14%, #d6a648 22%,
-    #c08624 30%, #b8662a 36%, #983e20 42%, #6e1e1c 46%,
-    #380a18 50%, #2a1428 55%, #1c1232 60%, #100c44 66%,
-    #0a124c 72%, #0a1c4c 78%, #0a2c34 84%, #0c1820 90%,
-    #0a0e14 96%, #07090c 100%);
+  /* The day spectrum (clock order 00:00→24:00) — only the transient scrub track uses it,
+     built from the same baked anchors at their hour positions. */
+  --spectrum: linear-gradient(to right in oklch,
+    oklch(0.22 0.026 60) 0%,    /* 00:00 (wrap) */
+    oklch(0.17 0.022 60) 8.3%,  /* 02:00 deep night */
+    oklch(0.44 0.030 52) 22.9%, /* 05:30 dawn */
+    oklch(0.93 0.012 85) 37.5%, /* 09:00 morning */
+    oklch(0.95 0.008 88) 52.1%, /* 12:30 midday */
+    oklch(0.88 0.020 78) 64.6%, /* 15:30 afternoon */
+    oklch(0.58 0.045 65) 79.2%, /* 19:00 golden dusk */
+    oklch(0.30 0.030 60) 91.7%, /* 22:00 evening */
+    oklch(0.22 0.026 60) 100%); /* 24:00 (wrap) */
 
   --face-body: 'Atkinson Hyperlegible', system-ui, -apple-system, "Segoe UI", sans-serif;
   --face-rec:  'Recursive', ui-sans-serif, system-ui, sans-serif;
 }
+
+/* prefers-contrast: more — widen the ΔL band (push ink further from mid, the bg sits on
+   the other side, so contrast grows on both day and night polarities). */
+@media (prefers-contrast: more) {
+  :root { --ink: oklch(from var(--ink-auto) clamp(0, calc(l + (l - 0.5) * 0.42), 1) c h); }
+}
+/* color-gamut: p3 — the golden-dusk reach: let the one accent run a little richer. */
+@media (color-gamut: p3) {
+  :root { --signal: oklch(from var(--ink) l 0.155 calc(h - 6)); }
+}
+/* Fallback where relative color (oklch(from …)) is unsupported: a fixed warm accent. */
+@supports not (color: oklch(from white l c h)) {
+  :root { --signal: oklch(0.55 0.12 60); }
+}
+
+/* Continuous-by-the-minute: gentle color tween as JS re-paints --bg/--ink-auto. Off
+   while scrubbing (live under the finger) and under reduced-motion (frozen). */
+html { transition: --bg 1.2s linear, --ink-auto 1.2s linear; }
+html.is-scrubbing { transition: none; }
 
 * { box-sizing: border-box; }
 
@@ -191,9 +226,9 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { width: 0; height: 0; display:
 }
 .prompt::placeholder { color: transparent; }
 
-/* ---------- zoom / density dial ---------- */
-/* Three detents: raw · stories (default) · clusters. Latent at rest; the active
-   notch is lit. Earns its pixels because it carries the current granularity. */
+/* ---------- zoom = depth in the hierarchy ---------- */
+/* Stops: raw · stories (default) · threads. A stop appears ONLY when it changes the
+   view (JS hides the rest); the whole dial hides when there is one stop. Active = lit. */
 
 .zoom {
   display: flex;
@@ -205,6 +240,7 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { width: 0; height: 0; display:
   transition: opacity 240ms ease;
 }
 .zoom:hover, .zoom:focus-within { opacity: 0.9; }
+.zoom[hidden] { display: none; }
 .zoom-notch {
   width: 22px;
   height: 3px;
@@ -215,6 +251,7 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { width: 0; height: 0; display:
   cursor: pointer;
   transition: background-color 220ms ease, height 220ms ease;
 }
+.zoom-notch[hidden] { display: none; }
 .zoom-notch[aria-checked="true"] {
   background: var(--signal);
   height: 4px;
@@ -241,12 +278,16 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { width: 0; height: 0; display:
 }
 #river.is-dragging { transition: none; }
 
+/* Felt merge: when zooming out, lines collapse into their parent — a brief settle so
+   the motion IS the meaning, not a silent recount. (reduced-motion: instant, below.) */
+@keyframes river-merge { from { opacity: 0.4; transform: translateY(calc(var(--river-y) * -1px)) scaleY(0.985); } }
+#river.merging { animation: river-merge 300ms cubic-bezier(0.22, 0.61, 0.36, 1); }
+
 article {
   margin: 0 0 var(--space-s) 0;
   padding-left: 0.6rem;
   position: relative;
   transition: opacity 0.4s ease, filter 0.4s ease;
-  --article-tint: 0;
 }
 article.is-read { opacity: 0.62; filter: saturate(0.78); }
 
@@ -257,10 +298,6 @@ article.is-saved::before {
   width: 1px; height: 0.9em;
   background: var(--signal);
   border-radius: 0.5px;
-}
-
-article .src .t {
-  color: color-mix(in oklch, var(--mute), var(--signal) calc(var(--article-tint) * 55%));
 }
 
 h2 {
@@ -275,19 +312,18 @@ h2 {
 h2 a { cursor: pointer; }
 h2 a:hover, h2 a:focus-visible { color: var(--signal); text-decoration: none; }
 
+/* The source line is DATA — full monospace (MONO 1), CASL held at 0, static. No axis
+   animates; recency is carried by chronological position, not a decaying tint/axis. */
 .src {
   font-family: var(--face-rec);
-  font-variation-settings: "wght" 400, "CASL" var(--src-casl, 0), "MONO" 1, "slnt" 0;
+  font-variation-settings: "wght" 400, "CASL" 0, "MONO" 1, "slnt" 0;
   font-size: var(--size-meta);
   line-height: var(--leading-meta);
   letter-spacing: var(--track-meta);
   color: var(--mute);
 }
 .src .sep { margin: 0 0.35em; opacity: 0.55; }
-.src .host { color: var(--mute); }
-/* The faint depth tell: a story carried by >1 host shows a thin trailing mark.
-   Felt, not a "carried by N" badge — equal weight holds (DESIGN.md). */
-.src .depth { opacity: 0.5; margin-left: 0.5em; letter-spacing: 0.12em; }
+.src .t, .src .host { color: var(--mute); }
 
 /* ---------- the dive (host step) ---------- */
 /* A story with >1 host opens to its hosts before the source. Tap a host → new tab.
@@ -312,7 +348,8 @@ article.is-diving { opacity: 1; }
 .host-link {
   display: inline-block;
   font-family: var(--face-rec);
-  font-variation-settings: "wght" 460, "CASL" 0, "MONO" 0, "slnt" 0;
+  /* Host names are DATA → monospace (MONO 1). */
+  font-variation-settings: "wght" 460, "CASL" 0, "MONO" 1, "slnt" 0;
   font-size: var(--size-meta);
   color: var(--ink);
   padding: 0.2em 0.55em 0.2em 0;
@@ -348,7 +385,7 @@ article.is-diving { opacity: 1; }
   content: '';
   flex: 1;
   height: 1px;
-  background: color-mix(in oklch, var(--mute) calc(var(--rule-alpha) * 100%), transparent);
+  background: var(--rule);
 }
 .newold.is-floor { color: var(--signal); }
 
@@ -389,7 +426,8 @@ body.is-focus-mode .prompt { opacity: 0; pointer-events: none; }
 body.is-focus-mode .zoom { opacity: 0; pointer-events: none; }
 body.is-focus-mode .src { opacity: 0.4; }
 body.is-focus-mode footer { opacity: 0; }
-body.is-focus-mode { --word-wght: 540; --word-casl: 0.6; }
+/* Focus mode quiets the chrome around the diff; the wordmark axes are NOT modulated
+   (CASL stays linear 0 — no toy register; wght stays the preset). */
 body .prompt, body .zoom, body .src, body footer { transition: opacity 360ms ease; }
 
 /* ---------- footer (status — internal, quiet) ---------- */
@@ -397,46 +435,47 @@ body .prompt, body .zoom, body .src, body footer { transition: opacity 360ms eas
 footer {
   flex: 0 0 auto;
   padding: 0.6rem 0 0.7rem;
-  border-top: 1px solid color-mix(in oklch, var(--mute) calc(var(--rule-alpha) * 100%), transparent);
+  border-top: 1px solid var(--rule);
   font-family: var(--face-rec);
   font-variation-settings: "wght" 400, "CASL" 0, "MONO" 1, "slnt" 0;
   font-size: 0.72rem;
   color: var(--mute);
 }
 
-/* ---------- transient dim-track (wordmark drag) ---------- */
-/* Surfaces only WHILE dragging the wordmark; dissolves on release. The page
-   background already IS the dim, so this is just a momentary handle. */
+/* ---------- transient day-scrub track (horizontal — wordmark drag) ---------- */
+/* Surfaces only WHILE scrubbing the wordmark; dissolves on release. Horizontal because
+   it is TIME: left ← dawn, right → night. The page background already IS the dim, so
+   this is just a momentary handle showing where in the day you are (the --t marker). */
 
 .dim-track {
   position: fixed;
   left: 0;
   top: 0;
-  width: 4px;
-  height: 100dvh;
+  width: 100vw;
+  height: 4px;
   z-index: 25;
   background: var(--spectrum);
   opacity: 0;
   pointer-events: none;
-  transform: scaleX(0);
-  transform-origin: left center;
+  transform: scaleY(0);
+  transform-origin: top center;
   transition: opacity 240ms ease, transform 240ms ease;
 }
 .dim-track.is-active {
-  opacity: 0.6;
-  transform: scaleX(1);
+  opacity: 0.7;
+  transform: scaleY(1);
   transition: opacity 140ms ease, transform 140ms ease;
 }
-/* The current --dim position marker on the track */
+/* The current --t (clock hour) marker, riding the day spectrum left→right. */
 .dim-track::after {
   content: '';
   position: absolute;
-  left: 0;
-  top: calc(var(--dim) * (100dvh - 18px));
-  width: 4px;
-  height: 18px;
+  top: 0;
+  left: calc(var(--t) * (100vw - 3px));
+  width: 3px;
+  height: 4px;
   background: var(--ink);
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
 /* ---------- colophon ---------- */
@@ -471,7 +510,7 @@ footer {
 .colophon-title { font-size: 1rem; }
 .colophon-title strong {
   font-family: var(--face-rec);
-  font-variation-settings: "wght" 620, "CASL" 0.85, "MONO" 0, "slnt" 0;
+  font-variation-settings: "wght" 540, "CASL" 0, "MONO" 0.55, "slnt" 0;  /* wordmark preset */
   font-weight: 400;
   color: var(--signal);
 }
@@ -532,8 +571,11 @@ article.is-focused { box-shadow: inset 2px 0 0 0 var(--signal); }
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
-  /* The river becomes an instant page-turn; no easing, no slide. */
+  /* The river becomes an instant page-turn; the felt merge becomes an instant recount;
+     the day-scrub and colophon snap; the circadian tween is frozen. */
   #river { transition: none !important; }
+  #river.merging { animation: none !important; }
   .first-load article { animation: none !important; }
   .dim-track, .colophon { transition: opacity 0.001ms !important; }
+  html { transition: none !important; }
 }
