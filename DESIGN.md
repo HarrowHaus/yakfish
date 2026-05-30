@@ -59,10 +59,81 @@ is justified by what the eye needs then.
 
 Anchor states (OKLCH bg / ink, low-chroma throughout — eyeball-tuned, interpolate between):
 - deep night ~02:00 (~2200K): bg `oklch(0.17 0.022 60)` · ink `oklch(0.72 0.018 70)`
+- dawn ~05:30 (~2700K): bg `oklch(0.44 0.030 52)` · ink `oklch(0.30 0.016 50)` (cool-of-warm lean)
 - morning ~09:00 (~5000K): bg `oklch(0.93 0.012 85)` warm paper · ink `oklch(0.25 0.010 80)`
 - midday ~12:30 (~5500K): bg `oklch(0.95 0.008 88)` · ink `oklch(0.22 0.008 80)` (peak ΔL)
-- golden dusk ~19:00 (~3000K): bg `oklch(0.58 0.045 65)` · ink `oklch(0.26 0.020 60)`
+- afternoon ~15:30 (~4500K): bg `oklch(0.88 0.020 78)` · ink `oklch(0.27 0.014 72)` (the lean begins)
+- golden dusk ~19:00 (~3000K): bg `oklch(0.58 0.045 65)` · ink `oklch(0.26 0.020 60)` + P3 reach
 - evening ~22:00 (~2400K): bg `oklch(0.30 0.030 60)` · ink `oklch(0.74 0.020 70)`
+
+(All values are the *baked output* of the build-time derivation, eyeball-verified on screen
+— adjust within the discipline, never breaking it.)
+
+**The palette is DERIVED, not chosen — that is what makes it invisible-bold.** It should
+read as *inevitable* (the eye recognizes real light), never as *designed*. The derivation,
+in layers:
+- **Spine = the Planckian locus.** Each hour's hue/chroma is the actual chromaticity of
+  light at that hour's color temperature (~2200K firelight deep night → ~3000K golden hour
+  → ~5500K noon), read off the black-body curve through CIE into OKLCH. Not "a nice warm" —
+  the literal color of fire and daylight. The chroma arc is therefore physical, not taste:
+  it peaks where daylight peaks (dusk).
+- **Design for the *adapted* eye (the mind's-eye mechanism).** Chromatic adaptation
+  (von Kries) neutralizes a unified cast within ~60s, so the absolute warmth adapts away —
+  design the **relationships that survive adaptation** (the residual ink/bg/accent
+  differences). The field then reads *neutral but alive*, never "tinted." This is why it
+  sits perfectly rather than pops.
+- **Corrections past OKLCH** (OKLCH is uniform in lightness only): **counter-rotate hue
+  with lightness** (Bezold–Brücke) so bg→ink→accent read as *one* light source, not a hue
+  that drifts; exploit **Helmholtz–Kohlrausch** so the accent **glows at the same lightness
+  as the ink** (lit, not brighter); **mesopic/Purkinje tuning** at night picks the warm
+  angle that stays *luminous* to a dark-adapting eye instead of going muddy.
+- **Every hour is its own composition — its own flourish, not one shared peak.** Each
+  state expresses a different facet of how light *actually* behaves at that hour, so they
+  are individuated by truth and unified by the shared derivation. The arc across the day:
+  - *Deep night ~02:00* — **precision in near-darkness**: smallest chroma, near-monochrome
+    ember, separation carried by value, the single warm note at the exact mesopic/Purkinje
+    angle that stays luminous instead of muddy. Restraint *is* the boldness.
+  - *Dawn ~05:30* — the one hour a **whisper of cool** is allowed (warm sky, cool shadow):
+    ink leans a hair cooler-of-warm, the micro-tension makes it the most *alive* state.
+  - *Morning ~09:00* — **clarity**: the Bezold–Brücke correction held tightest, one clean
+    directional light, zero hue drift; the accent at its most honest gold.
+  - *Midday ~12:30* — **invisible warmth at peak brightness**: a warm cream the adapted eye
+    reads as white but the body reads as paper (never stark `#fff`); H–K accent glow.
+  - *Afternoon ~15:30* — **the lean**: hue begins rotating toward gold, chroma starts to
+    rise — the day tipping, felt before seen.
+  - *Golden dusk ~19:00* — **the crescendo**: the P3/wide-gamut reach lives here
+    (`@media (color-gamut: p3)`, graceful sRGB clamp), accent at its most luminous; the
+    richest state, placed where daylight is actually richest.
+  - *Evening ~22:00* — **the diminuendo**: a controlled chroma step-down from the peak, hue
+    settling, contrast easing to the night band — resolution, not mere dimming.
+- **One near-analogous accent only**; **value carries the composition, hue stays a whisper.**
+  Because the Planckian spine is *continuous*, minutes between anchors are samples of the
+  same physically-real curve — not dumb blends — so an hour visited at 16:40 is as composed
+  as one at 15:30. Every hour visited, the same polish.
+
+These corrections are an **appearance model run once at build time**; the output is the
+handful of baked OKLCH anchors below. No CAM16, no color library, no math at runtime —
+**nth-degree in derivation, vanilla on the page.**
+
+**Dim is light, not layout.** `--dim` changes only color/luminance — **never** leading,
+density, measure, tracking, or any metric that touches layout. (Earlier draft tied a
+"comfort posture" to the hour; killed — because the wordmark day-scrub makes dim
+user-draggable, any layout-tied metric would *reflow under the finger*. The light in the
+room changes; the furniture does not move. Restraint that holds even under a finger
+dragging the whole day across the screen is the kind that disappears.)
+
+**The engine (vanilla, lean, one scalar):** a single day-phase var **`--t` (0→1)**, registered
+via **CSS `@property`** as a typed `<number>` so it tweens natively. Tiny JS sets `--t` from
+an **inlined solar-position calc** (coarse latitude from the *timezone* — no geolocation, no
+permission prompt). Everything derives from `--t` in CSS: **bg via `color-mix(in oklch, …)`**
+between anchors; **ink/signal/borders via relative color syntax** (`oklch(from var(--bg)
+calc(l - Δ) calc(c + δ) h)`) so the composition rules hold automatically; ****the baked anchors are the *only*
+thing the runtime sees** (the Planckian + appearance-model derivation happens at build time).
+Hold contrast to a constant **APCA target** (Lc ~75 body /
+~90 wordmark) by solving the ink-L delta as bg shifts (swap to native `contrast-color()` when
+baseline). Honor `prefers-reduced-motion` / `prefers-contrast: more` / `prefers-color-scheme`
+and offer a P3/HDR-gamut variant; `@supports` fallback to a discrete OKLCH set. No color
+libraries, no SunCalc dependency — inline the math.
 
 **Adjust = a horizontal day-scrub on the wordmark.** The wordmark's color already *is* the
 current `--dim`, so it is the handle: **drag it left↔right to scrub the day** (dawn ← →
