@@ -42,8 +42,9 @@
    (where supported) tween natively. --bg/--ink-auto are color-mixes of the baked
    OKLCH anchors; everything else derives from them in CSS. */
 @property --t        { syntax: '<number>'; inherits: true; initial-value: 0.5; }
-@property --bg       { syntax: '<color>';  inherits: true; initial-value: oklch(0.95 0.008 88); }
-@property --ink-auto { syntax: '<color>';  inherits: true; initial-value: oklch(0.22 0.008 80); }
+@property --bg       { syntax: '<color>';  inherits: true; initial-value: oklch(0.96 0.008 94); }
+@property --ink-auto { syntax: '<color>';  inherits: true; initial-value: oklch(0.23 0.008 84); }
+@property --signal   { syntax: '<color>';  inherits: true; initial-value: oklch(0.46 0.150 236); }
 
 :root {
   --t: 0.5;                       /* day phase 0→1 (00:00→24:00), set by JS off the clock */
@@ -53,15 +54,16 @@
   --word-casl: 0;
   --word-mono: 0.55;
 
-  /* The circadian colors. JS sets only --bg + --ink-auto (color); the rest derive here
-     via relative color / color-mix, so the composition rules hold automatically. */
-  --bg: oklch(0.95 0.008 88);
-  --ink-auto: oklch(0.22 0.008 80);
+  /* The circadian colors. JS sets the three baked, interpolated anchors directly —
+     --bg + --ink-auto (warm field) and --signal (the cool counterpoint accent). --ink
+     and the borders derive here so the composition rules hold automatically. */
+  --bg: oklch(0.96 0.008 94);
+  --ink-auto: oklch(0.23 0.008 84);
   --ink: var(--ink-auto);
   --mute: color-mix(in oklch, var(--ink), var(--bg) 42%);
-  /* One near-analogous accent: at the ink's lightness (Helmholtz–Kohlrausch glow, lit
-     not brighter), a whisper-to-signal chroma, hue nudged a touch toward gold. */
-  --signal: oklch(from var(--ink) l 0.12 calc(h - 6));
+  /* The accent is a baked cool note (JS-set per hour), NOT derived from ink — its job is
+     to be complementary to the warm field. Used only on interactivity (links/focus/dive). */
+  --signal: oklch(0.46 0.150 236);
   --rule: color-mix(in oklch, var(--mute), transparent 55%);
   --word-color: var(--signal);
 
@@ -95,37 +97,32 @@
   /* The day spectrum (clock order 00:00→24:00) — only the transient scrub track uses it,
      built from the same baked anchors at their hour positions. */
   --spectrum: linear-gradient(to right in oklch,
-    oklch(0.22 0.026 60) 0%,    /* 00:00 (wrap) */
-    oklch(0.17 0.022 60) 8.3%,  /* 02:00 deep night */
-    oklch(0.44 0.030 52) 22.9%, /* 05:30 dawn */
-    oklch(0.93 0.012 85) 37.5%, /* 09:00 morning */
-    oklch(0.95 0.008 88) 52.1%, /* 12:30 midday */
-    oklch(0.88 0.020 78) 64.6%, /* 15:30 afternoon */
-    oklch(0.58 0.045 65) 79.2%, /* 19:00 golden dusk */
-    oklch(0.30 0.030 60) 91.7%, /* 22:00 evening */
-    oklch(0.22 0.026 60) 100%); /* 24:00 (wrap) */
+    oklch(0.20 0.024 60) 0%,    /* 00:00 (wrap) */
+    oklch(0.16 0.020 62) 8.3%,  /* 02:00 deep night */
+    oklch(0.20 0.026 56) 22.9%, /* 05:30 dawn */
+    oklch(0.94 0.012 92) 37.5%, /* 09:00 morning */
+    oklch(0.96 0.008 94) 52.1%, /* 12:30 midday */
+    oklch(0.90 0.018 82) 64.6%, /* 15:30 afternoon */
+    oklch(0.85 0.032 72) 79.2%, /* 19:00 golden dusk */
+    oklch(0.25 0.028 60) 91.7%, /* 22:00 evening */
+    oklch(0.20 0.024 60) 100%); /* 24:00 (wrap) */
 
   --face-body: 'Atkinson Hyperlegible', system-ui, -apple-system, "Segoe UI", sans-serif;
   --face-rec:  'Recursive', ui-sans-serif, system-ui, sans-serif;
 }
 
-/* prefers-contrast: more — widen the ΔL band (push ink further from mid, the bg sits on
-   the other side, so contrast grows on both day and night polarities). */
+/* prefers-contrast: more — widen the ΔL band (push ink further from mid; the bg sits on
+   the other side, so contrast grows on both day and night polarities). Progressive: if
+   relative color is unsupported the rule is ignored and the (already ≥0.55) ΔL stands. */
 @media (prefers-contrast: more) {
   :root { --ink: oklch(from var(--ink-auto) clamp(0, calc(l + (l - 0.5) * 0.42), 1) c h); }
 }
-/* color-gamut: p3 — the golden-dusk reach: let the one accent run a little richer. */
-@media (color-gamut: p3) {
-  :root { --signal: oklch(from var(--ink) l 0.155 calc(h - 6)); }
-}
-/* Fallback where relative color (oklch(from …)) is unsupported: a fixed warm accent. */
-@supports not (color: oklch(from white l c h)) {
-  :root { --signal: oklch(0.55 0.12 60); }
-}
+/* The accent's P3 reach (richest at golden dusk) is handled by oklch() itself: wide-gamut
+   displays render the baked chroma directly, sRGB clamps gracefully — no extra rule. */
 
-/* Continuous-by-the-minute: gentle color tween as JS re-paints --bg/--ink-auto. Off
-   while scrubbing (live under the finger) and under reduced-motion (frozen). */
-html { transition: --bg 1.2s linear, --ink-auto 1.2s linear; }
+/* Continuous-by-the-minute: gentle color tween as JS re-paints the three anchors. Off
+   while scrubbing (live under the finger) and under reduced-motion (frozen, below). */
+html { transition: --bg 1.2s linear, --ink-auto 1.2s linear, --signal 1.2s linear; }
 html.is-scrubbing { transition: none; }
 
 * { box-sizing: border-box; }

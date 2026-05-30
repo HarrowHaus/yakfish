@@ -30,21 +30,29 @@
 
   /* The circadian curve — the BAKED OKLCH anchors from DESIGN.md (the output of the
      build-time Planckian + appearance-model derivation). The runtime is a lean one-
-     scalar engine: it color-mixes between the two anchors bracketing the local clock
-     hour. No color library, no appearance model on the page. Warm hue always; chroma a
-     whisper; ink polarity flips across the day (light-on-dark night → dark-on-light
-     day) because the baked ink anchors already encode it. Hours wrap 22→02. */
+     scalar engine: it color-mixes between the two anchors bracketing the clock hour.
+     No color library on the page. Field hue stays warm + low-chroma; every RESTING
+     anchor holds ΔL ≥ ~0.55. The polarity flips (light-on-dark night ↔ dark-on-light
+     day) happen FAST between anchors via a steep easing (see `ease`), so no hour rests
+     in the lightness dead zone (~0.40–0.68). The accent is a baked per-anchor COOL
+     counterpoint (the one licensed note of chroma), used only on interactivity, and is
+     interpolated on the same --t. Hours wrap 22→02. */
   const ANCHORS = [
-    { h: 2.0,  bg: 'oklch(0.17 0.022 60)', ink: 'oklch(0.72 0.018 70)' }, // deep night ~2200K
-    { h: 5.5,  bg: 'oklch(0.44 0.030 52)', ink: 'oklch(0.30 0.016 50)' }, // dawn ~2700K (cool-of-warm)
-    { h: 9.0,  bg: 'oklch(0.93 0.012 85)', ink: 'oklch(0.25 0.010 80)' }, // morning ~5000K warm paper
-    { h: 12.5, bg: 'oklch(0.95 0.008 88)', ink: 'oklch(0.22 0.008 80)' }, // midday ~5500K (peak ΔL)
-    { h: 15.5, bg: 'oklch(0.88 0.020 78)', ink: 'oklch(0.27 0.014 72)' }, // afternoon ~4500K (the lean)
-    { h: 19.0, bg: 'oklch(0.58 0.045 65)', ink: 'oklch(0.26 0.020 60)' }, // golden dusk ~3000K (P3 reach)
-    { h: 22.0, bg: 'oklch(0.30 0.030 60)', ink: 'oklch(0.74 0.020 70)' }  // evening ~2400K (diminuendo)
+    { h: 2.0,  bg: 'oklch(0.16 0.020 62)', ink: 'oklch(0.80 0.016 72)', accent: 'oklch(0.68 0.050 198)' }, // deep night ~2200K
+    { h: 5.5,  bg: 'oklch(0.20 0.026 56)', ink: 'oklch(0.82 0.018 66)', accent: 'oklch(0.70 0.080 210)' }, // dawn ~2700K (accent bluest)
+    { h: 9.0,  bg: 'oklch(0.94 0.012 92)', ink: 'oklch(0.26 0.012 82)', accent: 'oklch(0.48 0.130 232)' }, // morning ~5000K warm paper
+    { h: 12.5, bg: 'oklch(0.96 0.008 94)', ink: 'oklch(0.23 0.008 84)', accent: 'oklch(0.46 0.150 236)' }, // midday ~5500K (peak ΔL, accent vivid)
+    { h: 15.5, bg: 'oklch(0.90 0.018 82)', ink: 'oklch(0.27 0.014 76)', accent: 'oklch(0.48 0.120 222)' }, // afternoon ~4500K (the lean)
+    { h: 19.0, bg: 'oklch(0.85 0.032 72)', ink: 'oklch(0.28 0.020 62)', accent: 'oklch(0.50 0.110 196)' }, // golden dusk ~3000K (warm/cool duet, P3 reach)
+    { h: 22.0, bg: 'oklch(0.25 0.028 60)', ink: 'oklch(0.82 0.020 70)', accent: 'oklch(0.66 0.060 200)' }  // evening ~2400K (diminuendo)
   ];
   // Append the wrap anchor (next-day deep night at h+24) so 22:00→02:00 interpolates.
-  const ANCH = [...ANCHORS, { h: ANCHORS[0].h + 24, bg: ANCHORS[0].bg, ink: ANCHORS[0].ink }];
+  const ANCH = [...ANCHORS, { ...ANCHORS[0], h: ANCHORS[0].h + 24 }];
+
+  // smootherstep — flat at the anchors, STEEP through the middle. This is what makes the
+  // polarity flip whip across the lightness dead zone fast (timed to the segment middle,
+  // ≈ sunrise/sunset) instead of resting in the unreadable gray. (Fixes dawn ΔL≈0.14.)
+  const ease = (f) => (f <= 0 ? 0 : f >= 1 ? 1 : f * f * f * (f * (f * 6 - 15) + 10));
 
   const state = {
     endpoint: null,
@@ -142,20 +150,22 @@
     for (let i = 0; i < ANCH.length - 1; i++) {
       const a = ANCH[i], b = ANCH[i + 1];
       if (hh >= a.h && hh <= b.h) {
-        const f = (hh - a.h) / (b.h - a.h);
-        return { bg: mix(a.bg, b.bg, f), ink: mix(a.ink, b.ink, f) };
+        const f = ease((hh - a.h) / (b.h - a.h));   // steep through the middle
+        return { bg: mix(a.bg, b.bg, f), ink: mix(a.ink, b.ink, f), accent: mix(a.accent, b.accent, f) };
       }
     }
-    return { bg: ANCHORS[0].bg, ink: ANCHORS[0].ink };
+    return { bg: ANCHORS[0].bg, ink: ANCHORS[0].ink, accent: ANCHORS[0].accent };
   }
 
   // Paint the page at a given clock hour. --t (0→1 day phase) is the single scalar; the
-  // wordmark and the scrub track read it. Color only — no layout touched.
+  // wordmark and the scrub track read it. Color only — no layout touched. --signal is the
+  // baked cool accent (not derived from ink): a circadian counterpoint for interactivity.
   function applyDim(hour) {
     state.dimHour = hour;
-    const { bg, ink } = dimColors(hour);
+    const { bg, ink, accent } = dimColors(hour);
     root.style.setProperty('--bg', bg);
     root.style.setProperty('--ink-auto', ink);
+    root.style.setProperty('--signal', accent);
     root.style.setProperty('--t', ((((hour % 24) + 24) % 24) / 24).toFixed(4));
   }
 
