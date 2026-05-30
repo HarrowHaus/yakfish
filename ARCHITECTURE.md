@@ -35,9 +35,15 @@ seendate, language). Modes we use:
   never as a front-surface "what's big" signal.**
 - **`mode=TimelineVolInfo`** — same, plus the top articles driving each interval,
   so a volume spike can be tied to the stories causing it.
-- **GKG themes** (`theme:` query operator) — GDELT's own auto-extracted topic
-  groupings (hundreds of phrases under one heading). Use these only as a clustering
-  hint (§3) to help group stories *without yak.fish inventing any taxonomy or ranking.*
+- **GKG themes / entities** (`theme:` operator + the GKG entity/location fields) —
+  GDELT's own auto-extracted groupings. **This is the "other 90% of GDELT": we currently
+  sip only the article list; the GKG knows which articles describe the *same event* even
+  when their headlines differ.** Title-match `dupeKey` (Phase 2) only collapses
+  *same-headline* syndication; **event-level clustering across differently-headlined
+  outlets needs the GKG layer.** This is the **Clustering v2** lever (see ROADMAP) — used
+  only as a *grouping* signal, never a taxonomy, ranking, or front surface, and built
+  conservatively (prefer under- to over-clustering; merging unrelated events that share
+  one entity is the failure to avoid). `tone` is never used.
 
 **Do NOT use `tone` / sentiment for ordering or display.** Tone is an editorial
 signal and violates the non-editorial rule. It may be ignored entirely.

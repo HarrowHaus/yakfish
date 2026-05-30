@@ -171,6 +171,8 @@ Goal: the data feeds the river/dive correctly and honestly.
 
 ### PHASE 3 — The river, the dive, and auto-dim  · model: `opusplan` (feel), `sonnet` (build)
 Goal: the product shift — from scroll list to the river + dive. Most design-open.
+- [ ] Drop `articles[]` from `latest.json` once the renderer consumes `stories[]`/`sources[]`
+      directly (Phase 2 kept both as a bridge). *(Sonnet.)*
 - [ ] **The dive:** tap a story → if `sources.length > 1`, show the hosts (apprehend, tap
       one) → out; else straight to source. Build the host view from `sources[]`. *(Sonnet.)*
 - [ ] **New/old line:** make `lastVisitISO` an explicit anchor in the stream (arrive at the
@@ -224,6 +226,14 @@ Goal: accountless power features; the only per-user cost, kept safe + cheap.
       allowed fields. *(Sonnet.)*
 - [ ] **OPML + JSON export/import**: read/write OPML for feeds, JSON for saved/pins/settings;
       bundle as the portable state file. *(Sonnet.)*
+- [ ] **Clustering v2 — GKG-assisted event grouping** *(deferred; evaluate AFTER Phase 4)*.
+      Phase 2 clusters by title-match `dupeKey` (collapses same-headline syndication only).
+      The real multi-host coverage signal — the same event under *different* headlines —
+      needs GDELT's **GKG themes/entities** (the "other 90%" we don't yet tap;
+      `ARCHITECTURE.md` §1). Add it as a *second* grouping key alongside title-match, used
+      conservatively (under-cluster when unsure; never merge on a single shared entity;
+      never use tone). Only worth doing once Phase 4's clean sources show how sparse
+      title-match clustering really is. *(opusplan — this is genuinely hard.)*
 
 ---
 
@@ -249,7 +259,10 @@ backend       river+dive+auto-dim                                  paid tier
 - **Phase 2 ∥ Phase 3:** different files; the only contract is the §6 story schema. Run
   two Claude Code sessions for true parallelism, or sequence them solo.
 - **Phase 5** is independent — ship the free wire (Phases 1–4) first.
-- **Recommended solo order:** 0 → 1 → 2 → 3 → 4 → (cross-cutting PWA/CI) → 5.
+- **Recommended solo order (revised after Phase 2):** 0 → 1 → 2 → **4 → 3** → (cross-cutting
+  PWA/CI) → 5. *Phase 4 moves ahead of Phase 3:* the dive is built on multi-source stories,
+  and there are ~zero until the Google feeds are replaced, so do sources first to give
+  Phase 3 real clusters to build the dive against. (Clustering v2 is evaluated after 4.)
 
 ## Model routing recap (cost)
 
