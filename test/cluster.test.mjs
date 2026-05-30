@@ -117,9 +117,9 @@ const FORBIDDEN = ['description', 'socialimage', 'image', 'thumbnail', 'summary'
   const latestPath = path.join(ROOT, 'public', 'cache', 'latest.json');
   if (fs.existsSync(latestPath)) {
     const latest = JSON.parse(fs.readFileSync(latestPath, 'utf8'));
-    for (const a of latest.articles || []) {
-      for (const k of Object.keys(a)) assert.ok(ALLOWED_ARTICLE.has(k), `latest.json article leaked field: ${k}`);
-    }
+    // Phase 3: latest.json carries stories[] only — articles[] was dropped once the
+    // renderer began consuming stories[]/sources[].
+    assert.ok(!('articles' in latest), 'latest.json must not carry articles[] (Phase 3)');
     for (const s of latest.stories || []) {
       assert.deepEqual(Object.keys(s).sort(), ['headline', 'id', 'section', 'sources', 'time']);
       for (const src of s.sources) {

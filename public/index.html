@@ -4,81 +4,55 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>yak.fish</title>
-<meta name="description" content="A list of news links from public RSS and GDELT sources.">
+<meta name="description" content="A chronological, finishable, accountless reader for public news links.">
 <meta name="color-scheme" content="light dark">
-<link rel="preload" href="fonts/Recursive-Variable.woff2?v=14" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="fonts/AtkinsonHyperlegible-Regular.woff2?v=14" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="styles.css?v=14">
+<link rel="preload" href="fonts/Recursive-Variable.woff2?v=15" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/AtkinsonHyperlegible-Regular.woff2?v=15" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="styles.css?v=15">
 </head>
 <body>
 
-<!-- The page-wide grain. Ages with fetch cycle and with scroll depth into the
-     buffer. Resets visibly on each successful fetch. Stalls and climbs on
-     connection failure so the page itself visibly degrades. -->
-<div class="grain" aria-hidden="true">
-  <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" preserveAspectRatio="none">
-    <filter id="grain-filter">
-      <feTurbulence id="grain-turb" type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="3" stitchTiles="stitch"/>
-      <feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.9 0"/>
-    </filter>
-    <rect width="100%" height="100%" filter="url(#grain-filter)"/>
-  </svg>
-</div>
-
-<!-- Sticky header: wordmark + filter input + chromatic bar. Both wordmark and
-     bar stay pinned to the top of the viewport during scroll. The wordmark
-     color tracks the topmost visible article's time-of-day via CSS
-     scroll-driven animation. -->
+<!-- Sticky header: the wordmark (identity = the time-of-day --dim color; drag it to
+     adjust the dim) + the filter bar (typing field = the universal command surface;
+     zoom dial = the granularity detents). No chromatic bar, no grain, no scroll
+     slider — the page background IS the dim state (DESIGN.md). -->
 <header class="header" id="header">
   <div class="mark is-initial" id="mark">
     <span class="word" id="word">yak.fish</span><input id="prompt" class="prompt" type="text"
                                                    autocomplete="off" spellcheck="false"
                                                    autocapitalize="off" autocorrect="off"
                                                    enterkeyhint="search" inputmode="search"
-                                                   aria-label="filter — plain text, @source, @section, or @saved">
+                                                   aria-label="filter and commands — text, @source, @section, @saved, -@source to mute, zoom raw/stories/clusters">
   </div>
 
-  <div class="bar" id="bar"
-       role="slider"
-       aria-label="chromatic state — drag to dim the page through the day"
-       aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
-       tabindex="0">
-    <div class="bar-track"></div>
-    <div class="bar-cursor" id="bar-cursor" aria-hidden="true"></div>
+  <!-- Zoom / density dial — three detents: raw · stories (default) · clusters.
+       Latent at rest; the current detent is the lit notch. -->
+  <div class="zoom" id="zoom" role="radiogroup" aria-label="zoom — granularity and density">
+    <button class="zoom-notch" data-zoom="raw"      role="radio" aria-checked="false" aria-label="raw headlines" type="button"></button>
+    <button class="zoom-notch" data-zoom="stories"  role="radio" aria-checked="true"  aria-label="deduped stories" type="button"></button>
+    <button class="zoom-notch" data-zoom="clusters" role="radio" aria-checked="false" aria-label="topic clusters" type="button"></button>
   </div>
 </header>
 
-<!-- Pull-to-refresh sentinel at the very top of scrollable content. The
-     rubber-band overscroll above this triggers a refresh. -->
-<div class="pull-refresh" id="pull-refresh" aria-hidden="true"></div>
-
-<main id="stream"></main>
-
-<!-- Overscroll sentinel: when scrolled into view past the bottom of the
-     article list, the colophon panel rises. -->
-<div class="overscroll-sentinel" id="overscroll-sentinel" aria-hidden="true"></div>
+<!-- The river: a reach pager. The viewport is fixed below the header and does not
+     free-scroll (no momentum fling). #river is translated a reach at a time. -->
+<main id="stream" aria-label="the river — chronological headlines">
+  <div id="river"></div>
+</main>
 
 <footer><small id="status">&mdash;</small></footer>
 
-<!-- The vertical scroll slider on the right edge. Invisible at rest.
-     Breathes opacity in sync with the wordmark's weight breath. Materializes
-     on scroll input. Its gradient maps the 26-hour buffer to chromatic
-     keyframe positions; the thumb's position is scroll depth in time-space. -->
-<div class="scroller" id="scroller" role="slider"
-     aria-label="scroll position in news buffer"
-     aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
-     tabindex="0">
-  <div class="scroller-track"></div>
-  <div class="scroller-thumb" id="scroller-thumb"></div>
-</div>
+<!-- Transient chromatic track — surfaces only WHILE dragging the wordmark to adjust
+     --dim, and dissolves on release. Zero at-rest footprint (DESIGN.md). -->
+<div class="dim-track" id="dim-track" aria-hidden="true"></div>
 
-<!-- The colophon. Rises from below on overscroll past the bottom of the
-     article list, or via ? keyboard. Tap outside or press Esc to dismiss. -->
+<!-- The colophon. Reached by pushing past the floor of the river, or via ? .
+     Tap outside or press Esc to dismiss. -->
 <div class="colophon" id="colophon" aria-hidden="true" role="dialog" aria-label="colophon">
   <div class="colophon-inner">
     <p class="colophon-title"><strong>yak.fish</strong> — a daily aggregation of public news.</p>
 
-    <p class="colophon-rules">type to filter · drag the bar to dim · each line — one story across every host</p>
+    <p class="colophon-rules">descend the river to the new/old line · dive a story to its hosts · leave to the source · each line is one story across every host</p>
 
     <p>Set in Recursive Variable at yak.fish's wordmark coordinates (wght 620, casl 0.85, mono 0) and Atkinson Hyperlegible. Composed in vanilla HTML, CSS, and JavaScript.</p>
 
@@ -86,21 +60,23 @@
 
     <p class="colophon-keys"><span class="k-label">keyboard</span>
       <kbd>/</kbd> filter · <kbd>esc</kbd> clear ·
-      <kbd>j</kbd> <kbd>k</kbd> next / prev · <kbd>g g</kbd> top ·
-      <kbd>s</kbd> save · <kbd>o</kbd> open · <kbd>?</kbd> colophon</p>
+      <kbd>space</kbd> next reach · <kbd>j</kbd> <kbd>k</kbd> next / prev ·
+      <kbd>g g</kbd> top · <kbd>s</kbd> save · <kbd>o</kbd> open · <kbd>?</kbd> colophon</p>
 
     <p class="colophon-keys"><span class="k-label">touch</span>
-      tap wordmark → refresh · double-tap → filter ·
-      long-press → focus mode · long-press article → save ·
-      pull down at top → refresh · pull up past bottom → colophon</p>
+      drag the river → snap a reach (crossing marks seen, drag back to undo) ·
+      tap a story → hosts, then the source in a new tab ·
+      tap wordmark → refresh · double-tap → filter · long-press → focus ·
+      drag wordmark → dim · long-press a story → save · long-press a host → mute</p>
 
     <p class="colophon-keys"><span class="k-label">filter</span>
-      plain text · <code>@source</code> · <code>@section</code> · <code>@saved</code></p>
+      plain text · <code>@source</code> · <code>@section</code> · <code>@saved</code> ·
+      <code>-@source</code> mute · <code>zoom raw|stories|clusters</code></p>
 
-    <p class="colophon-rss">RSS / JSON — <code>/api/news</code></p>
+    <p class="colophon-rss">RSS / JSON — <code>/cache/latest.json</code></p>
   </div>
 </div>
 
-<script src="app.js?v=14" defer></script>
+<script src="app.js?v=15" defer></script>
 </body>
 </html>

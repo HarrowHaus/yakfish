@@ -15,7 +15,6 @@ import {
   buildRecords,
   clusterIntoStories,
   applyFloodCap,
-  toSlimArticle,
   LATEST_WINDOW_HOURS,
   LATEST_MAX_STORIES,
   FLOOD_CAP_PER_SOURCE
@@ -43,6 +42,29 @@ async function fileExists(file) {
   try { await fs.access(file); return true; } catch { return false; }
 }
 
+// Reconstruct minimal records from emitted stories (latest.json no longer carries
+// articles[]). Each source becomes a record; clusterIntoStories re-derives the
+// grouping from section + title, so the fallback round-trips cleanly.
+function recordsFromStories(stories) {
+  const out = [];
+  for (const s of stories || []) {
+    for (const src of s.sources || []) {
+      out.push({
+        title: s.headline,
+        url: src.url,
+        host: src.host,
+        source: src.name,
+        publisher: src.name,
+        sourceId: src.host,
+        section: s.section || 'UNFILED',
+        publishedAt: src.time || s.time,
+        fetchedAt: src.time || s.time
+      });
+    }
+  }
+  return out;
+}
+
 await fs.mkdir(CACHE_DIR, { recursive: true });
 await fs.mkdir(ARCHIVE_DIR, { recursive: true });
 
@@ -62,8 +84,10 @@ if (!records.length) {
   }
   // Bootstrap / deep fallback: reuse the legacy cache snapshot as last-good.
   const legacy = await readJson(LEGACY_PATH);
-  if (legacy && Array.isArray(legacy.articles) && legacy.articles.length) {
-    records = legacy.articles;
+  if (legacy && (Array.isArray(legacy.stories) || Array.isArray(legacy.articles))) {
+    records = Array.isArray(legacy.articles) && legacy.articles.length
+      ? legacy.articles
+      : recordsFromStories(legacy.stories);
     sources = Array.isArray(legacy.sources) ? legacy.sources : [];
     sections = Array.isArray(legacy.sections) ? legacy.sections : sections;
     updatedAt = legacy.updatedAt || updatedAt;
@@ -84,7 +108,6 @@ if (!windowed.length) windowed = records;   // clock-safety: never empty the riv
 
 const { kept, overflow } = applyFloodCap(windowed, FLOOD_CAP_PER_SOURCE);
 const latestStories = clusterIntoStories(kept).slice(0, LATEST_MAX_STORIES);
-const latestArticles = kept.map(toSlimArticle);
 const multiSourceCount = latestStories.filter((s) => s.sources.length > 1).length;
 
 // The full set clustered — the archive superset (lazy-loaded past latest).
@@ -109,12 +132,11 @@ const latest = {
   floodCapPerSource: FLOOD_CAP_PER_SOURCE,
   storyCount: latestStories.length,
   multiSourceCount,
-  articleCount: latestArticles.length,
-  cappedFromArticles: windowed.length,
+  recordCount: kept.length,
+  cappedFromRecords: windowed.length,
   floodOverflow: overflow.length,
   sections,
-  stories: latestStories,
-  articles: latestArticles,   // four-field-only records; the renderer's compat path
+  stories: latestStories,     // the river: the renderer consumes stories[]/sources[]
   sources: slimSources        // id/label/section/status only — for the ok/total count
 };
 
