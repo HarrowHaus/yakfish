@@ -6,9 +6,9 @@
 <title>yak.fish</title>
 <meta name="description" content="A chronological, finishable, accountless reader for public news links.">
 <meta name="color-scheme" content="light dark">
-<link rel="preload" href="fonts/Recursive-Variable.woff2?v=16" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="fonts/AtkinsonHyperlegible-Regular.woff2?v=16" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="styles.css?v=16">
+<link rel="preload" href="fonts/Recursive-Variable.woff2?v=17" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/AtkinsonHyperlegible-Regular.woff2?v=17" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="styles.css?v=17">
 </head>
 <body>
 
@@ -22,16 +22,7 @@
                                                    autocomplete="off" spellcheck="false"
                                                    autocapitalize="off" autocorrect="off"
                                                    enterkeyhint="search" inputmode="search"
-                                                   aria-label="filter and commands — text, @source, @section, @saved, -@source to mute, zoom raw/stories/threads">
-  </div>
-
-  <!-- Zoom = depth in the hierarchy: raw (0) · stories (1, default) · threads (2).
-       A stop shows only when it changes the view; threads is stubbed until the GKG
-       track, so it auto-collapses out for now. -->
-  <div class="zoom" id="zoom" role="radiogroup" aria-label="zoom — depth in the story hierarchy">
-    <button class="zoom-notch" data-zoom="raw"      role="radio" aria-checked="false" aria-label="raw — articles" type="button"></button>
-    <button class="zoom-notch" data-zoom="stories"  role="radio" aria-checked="true"  aria-label="stories — events" type="button"></button>
-    <button class="zoom-notch" data-zoom="threads"  role="radio" aria-checked="false" aria-label="threads (coming with GKG)" type="button" hidden></button>
+                                                   aria-label="filter and commands — text, @source, @section, @saved, -@source to mute, zoom raw/stories/threads or zoom in/out">
   </div>
 </header>
 
@@ -46,6 +37,11 @@
 <!-- Transient day-scrub track — a horizontal spectrum that surfaces only WHILE dragging
      the wordmark left↔right to scrub the day, and dissolves on release (DESIGN.md). -->
 <div class="dim-track" id="dim-track" aria-hidden="true"></div>
+
+<!-- Transient depth label — surfaces only DURING a zoom gesture (pinch / +- / double-
+     click), naming the level, and dissolves on release. No at-rest chrome (the notched
+     dial was cut — DECISIONS.md "earned chrome"). -->
+<div class="depth-label" id="depth-label" aria-hidden="true"></div>
 
 <!-- The colophon. Reached by pushing past the floor of the river, or via ? .
      Tap outside or press Esc to dismiss. -->
@@ -62,22 +58,22 @@
     <p class="colophon-keys"><span class="k-label">keyboard</span>
       <kbd>/</kbd> filter · <kbd>esc</kbd> clear ·
       <kbd>space</kbd> next reach · <kbd>j</kbd> <kbd>k</kbd> next / prev ·
-      <kbd>g g</kbd> top · <kbd>s</kbd> save · <kbd>o</kbd> open · <kbd>?</kbd> colophon</p>
+      <kbd>+</kbd> <kbd>-</kbd> depth · <kbd>g g</kbd> top · <kbd>s</kbd> save · <kbd>o</kbd> open · <kbd>?</kbd> colophon</p>
 
     <p class="colophon-keys"><span class="k-label">touch</span>
       drag the river → snap a reach (crossing marks seen, drag back to undo) ·
-      tap a story → hosts, then the source in a new tab ·
+      pinch → depth (in = raw, out = threads) · tap a story → hosts, then the source ·
       tap wordmark → refresh · double-tap → filter · long-press → focus ·
       drag wordmark ↔ → scrub the day · long-press a story → save · long-press a host → mute</p>
 
     <p class="colophon-keys"><span class="k-label">filter</span>
       plain text · <code>@source</code> · <code>@section</code> · <code>@saved</code> ·
-      <code>-@source</code> mute · <code>zoom raw|stories|threads</code></p>
+      <code>-@source</code> mute · <code>zoom raw|stories|threads</code> · <code>zoom in|out</code></p>
 
     <p class="colophon-rss">RSS / JSON — <code>/cache/latest.json</code></p>
   </div>
 </div>
 
-<script src="app.js?v=16" defer></script>
+<script src="app.js?v=17" defer></script>
 </body>
 </html>

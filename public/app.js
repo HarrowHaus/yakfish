@@ -267,13 +267,14 @@
       if (['input', 'textarea', 'select', 'button'].includes(tag)) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (state.isColophonOpen) return;
-      if ([' ', 'j', 'k', 'g', 's', 'o', '?', '/'].includes(e.key)) return;
+      if ([' ', 'j', 'k', 'g', 's', 'o', '?', '/', '+', '=', '-', '_'].includes(e.key)) return; // reach + depth keys
       if (e.key === 'Escape') { if (state.query) { input.value = ''; state.query = ''; render(); updateHash(); e.preventDefault(); } return; }
       if (e.key.length === 1) { input.focus(); input.value += e.key; state.query = input.value; render(); updateHash(); e.preventDefault(); }
     });
   }
 
-  // Enter runs folded commands: -@source mutes, `zoom raw|stories|threads` sets depth.
+  // Enter runs folded commands: -@source mutes; `zoom raw|stories|threads` and `zoom in|out`
+  // set depth (full parity with the pinch gesture — no one is gated by whether they can pinch).
   function runCommand(input) {
     const raw = input.value.trim();
     const low = raw.toLowerCase();
@@ -281,8 +282,11 @@
     if ((m = low.match(/^-\s*@?\s*(.+)$/))) {
       toggleMute(m[1].trim()); input.value = ''; state.query = ''; render(); updateHash(); return;
     }
-    if ((m = low.match(/^(?:zoom|>)\s*:?\s*(raw|stories|threads)$/))) {
-      setZoom(m[1]); input.value = ''; state.query = ''; render(); updateHash(); return;
+    if ((m = low.match(/^(?:zoom|>)\s*:?\s*(raw|stories|threads|in|out)$/))) {
+      input.value = ''; state.query = '';
+      const arg = m[1];
+      if (arg === 'in') zoomStep(1); else if (arg === 'out') zoomStep(-1); else setZoom(arg);
+      render(); updateHash(); return;
     }
     state.query = raw; render(); updateHash();
   }
@@ -294,55 +298,86 @@
     persistMuted();
   }
 
-  /* ---------- zoom = depth in the hierarchy (raw/stories/threads = 0/1/2 layers) ---------- */
+  /* ---------- zoom = depth in the hierarchy (raw=0 / stories=1 / threads=2 layers) ----------
+     There is NO at-rest dial — the notched dial failed the earned-chrome test (DECISIONS.md:
+     it spent pixels at rest to show a state the content already carries). Depth is a GESTURE:
+     pinch within the river (mobile, primary) or the command bar / +- keys / double-click
+     (desktop), all at full parity. A level is reachable only when it changes the view
+     (auto-collapse); threads stays stubbed until the GKG track, so today the gesture often
+     has nowhere to go — and shows nothing, rather than exposing empty stops. */
 
-  // A stop is offered ONLY when it changes the view (no empty/redundant cluster layer):
-  //  - 'stories' is the spine (the deduped river).
-  //  - 'raw' appears only if un-clustering actually splits something (a multi-host story).
-  //  - 'threads' is STUBBED until the GKG track — it never changes the view yet, so it
-  //    auto-collapses out. (No section-as-thread faking of depth.)
-  function availableZooms() {
+  // The ordered levels that actually change the view right now (most-raw → most-collapsed).
+  function reachableZooms() {
     const stories = [...state.stories.values()].filter((s) => storyVisibleSources(s).length);
     const multi = stories.some((s) => storyVisibleSources(s).length > 1);
     const out = [];
-    if (multi) out.push('raw');          // raw differs from stories only when something merged
+    if (multi) out.push('raw');     // raw differs from stories only when something merged
     out.push('stories');
-    // 'threads' intentionally omitted until GKG themes make it change the view.
+    // 'threads' omitted until GKG themes make it a real, view-changing rung.
     return out;
   }
 
-  function bindZoom() {
-    const zoom = $('zoom');
-    if (!zoom) return;
-    zoom.addEventListener('click', (e) => {
-      const btn = e.target.closest('.zoom-notch');
-      if (!btn || btn.hasAttribute('hidden')) return;
-      setZoom(btn.getAttribute('data-zoom'));
-      updateHash();
-    });
+  // The single entry point every path shares (pinch / command / keys / double-click) → parity.
+  function setZoom(z, centroidY) {
+    const reach = reachableZooms();
+    if (!reach.includes(z) || z === state.zoom) return false;   // unreachable/empty rung → no-op
+    applyZoom(z, centroidY);
+    return true;
   }
-  function setZoom(z) {
-    const avail = availableZooms();
-    if (!avail.includes(z)) z = avail.includes('stories') ? 'stories' : avail[0];
-    if (z === state.zoom) { reflectZoom(); return; }
-    // Zooming OUT (fewer layers, lines merge into parents) is a felt merge.
-    if (ZOOMS.indexOf(z) > ZOOMS.indexOf(state.zoom)) flagMerge();
-    state.zoom = z; state.diveId = null; render();
+  // Move one rung. dir = +1 zooms IN (toward raw, more detail), -1 zooms OUT (toward threads).
+  function zoomStep(dir, centroidY) {
+    const reach = reachableZooms();
+    let i = reach.indexOf(state.zoom);
+    if (i < 0) i = Math.max(0, reach.indexOf('stories'));
+    const j = i - dir;                                          // reach is raw→stories(→threads)
+    if (j < 0 || j >= reach.length) return false;               // nowhere to go that way
+    applyZoom(reach[j], centroidY);
+    return true;
   }
-  function reflectZoom() {
-    const avail = availableZooms();
-    if (!avail.includes(state.zoom)) state.zoom = avail.includes('stories') ? 'stories' : avail[0];
-    const zoomEl = $('zoom');
-    for (const btn of zoomEl.querySelectorAll('.zoom-notch')) {
-      const z = btn.getAttribute('data-zoom');
-      const on = avail.includes(z);
-      btn.toggleAttribute('hidden', !on);              // auto-collapse unavailable stops
-      btn.setAttribute('aria-checked', String(z === state.zoom));
+  // The next rung in a direction (for the live gesture label), or null if none.
+  function zoomTarget(dir) {
+    const reach = reachableZooms();
+    let i = reach.indexOf(state.zoom); if (i < 0) i = Math.max(0, reach.indexOf('stories'));
+    const j = i - dir;
+    return (j >= 0 && j < reach.length) ? reach[j] : null;
+  }
+
+  // Apply a level change, holding the line at the centroid stable (map-like) + felt merge.
+  function applyZoom(z, centroidY) {
+    let anchorId = null, anchorScreenY = 0;
+    if (centroidY != null) {
+      const el = articleAtScreenY(centroidY);
+      if (el) { anchorId = el.getAttribute('data-story'); anchorScreenY = el.getBoundingClientRect().top; }
     }
-    // The dial only earns its pixels when there is more than one stop to choose.
-    zoomEl.toggleAttribute('hidden', avail.length < 2);
+    flagMerge();
+    state.zoom = z; state.diveId = null;
+    render();
+    if (anchorId) {
+      const el = $('river').querySelector(`article[data-story="${anchorId}"]`);
+      if (el) {
+        const streamTop = $('stream').getBoundingClientRect().top;
+        const maxOffset = state.reaches[state.reaches.length - 1] || 0;
+        const y = clamp(el.offsetTop - (anchorScreenY - streamTop), 0, maxOffset);
+        setRiverY(y);
+        let best = 0, bd = Infinity;
+        state.reaches.forEach((r, i) => { const d = Math.abs(r - y); if (d < bd) { bd = d; best = i; } });
+        state.reachIndex = best;
+      }
+    }
+    updateHash();
   }
-  // The merge cue: a brief settle on the river (gated by reduced-motion in CSS).
+  function articleAtScreenY(y) {
+    const r = $('stream').getBoundingClientRect();
+    const el = document.elementFromPoint((r.left + r.right) / 2, clamp(y, r.top + 1, r.bottom - 1));
+    return el ? el.closest('article') : null;
+  }
+
+  // Transient depth label — surfaces only DURING a gesture, dissolves on release (the same
+  // no-at-rest pattern as the dim day-scrub). Nothing at rest.
+  function showDepth(text) { const el = $('depth-label'); if (el) { el.textContent = text; el.classList.add('is-active'); } }
+  function hideDepth() { const el = $('depth-label'); if (el) el.classList.remove('is-active'); }
+
+  // The merge cue: a brief settle on the river (reduced-motion: instant, in CSS).
   function flagMerge() {
     const river = $('river');
     river.classList.remove('merging'); void river.offsetWidth; river.classList.add('merging');
@@ -453,6 +488,9 @@
   /* ---------- render ---------- */
 
   function render() {
+    // Auto-collapse: if the current level is no longer view-changing (e.g. multi-host
+    // stories aged out, or a URL set an unreachable level), fall back to the spine.
+    if (!reachableZooms().includes(state.zoom)) state.zoom = 'stories';
     state.entries = buildEntries();
     const river = $('river');
     const lv = state.lastVisitISO ? tms(state.lastVisitISO) : 0;
@@ -486,7 +524,6 @@
     layoutReaches();
     goToReach(clamp(state.reachIndex, 0, state.reaches.length - 1), false);
     updateStatus();
-    reflectZoom();
   }
 
   function renderEntry(e) {
@@ -612,12 +649,48 @@ ${hosts}
     let down = false, dragging = false, didLong = false, startY = 0, startX = 0, base = 0, downTarget = null, pressTimer = null;
     let moveBound = null, upBound = null;
 
+    // ---- pinch (two-finger) = the depth gesture (mobile, primary) ----
+    // Intercepted only inside #stream (touch-action: none in CSS); the rest of the page
+    // keeps native behavior. Pinch OUT (fingers apart) zooms IN toward raw; pinch IN
+    // (fingers together) zooms OUT toward threads — the pinch IS the felt merge, with the
+    // line at the centroid held stable (applyZoom re-anchors it, map-like).
+    const pointers = new Map();
+    let pinch = false, pinchBase = 0;
+    const PINCH_IN = 1.30, PINCH_OUT = 0.77;     // scale ratio to commit one rung
+    const twoPts = () => [...pointers.values()];
+    const pinchDist = () => { const p = twoPts(); return Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y); };
+    const pinchCentroidY = () => { const p = twoPts(); return (p[0].y + p[1].y) / 2; };
+
+    function startPinch() {
+      pinch = true;
+      if (dragging) { dragging = false; river.classList.remove('is-dragging'); goToReach(state.reachIndex, true); }
+      down = false; clearTimeout(pressTimer);
+      pinchBase = pinchDist();
+      labelTarget();
+    }
+    function endPinch() { pinch = false; hideDepth(); }
+    function labelTarget() {
+      // Show "current → target" only if the gesture has somewhere to go; else nothing.
+      const tIn = zoomTarget(1), tOut = zoomTarget(-1);
+      if (tIn || tOut) showDepth(`${state.zoom}${tIn ? ' ⇄ ' + tIn : ''}${tOut ? ' ⇄ ' + tOut : ''}`);
+      else hideDepth();
+    }
+    function onPinchMove() {
+      if (pointers.size < 2 || pinchBase <= 0) return;
+      const ratio = pinchDist() / pinchBase;
+      const cy = pinchCentroidY();
+      if (ratio >= PINCH_IN) { if (zoomStep(1, cy)) { showDepth(`→ ${state.zoom}`); buzz(8); } pinchBase = pinchDist(); }
+      else if (ratio <= PINCH_OUT) { if (zoomStep(-1, cy)) { showDepth(`→ ${state.zoom}`); buzz(8); } pinchBase = pinchDist(); }
+    }
+
     function onMove(e) {
+      if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pinch) { onPinchMove(); return; }
       if (!down) return;
       const dy = e.clientY - startY, dx = e.clientX - startX;
       if (!dragging && (Math.abs(dy) > DRAG_SLOP || Math.abs(dx) > DRAG_SLOP)) {
         if (Math.abs(dy) >= Math.abs(dx)) { dragging = true; clearTimeout(pressTimer); river.classList.add('is-dragging'); }
-        else { down = false; teardown(); return; } // horizontal — let it be (e.g. text select)
+        else { down = false; return; } // horizontal — let it be (e.g. text select)
       }
       if (dragging) {
         const maxOffset = state.reaches[state.reaches.length - 1] || 0;
@@ -627,7 +700,9 @@ ${hosts}
       }
     }
     function onUp(e) {
-      if (!down && !dragging) { teardown(); return; }
+      pointers.delete(e.pointerId);
+      if (pinch) { if (pointers.size < 2) endPinch(); if (pointers.size === 0) teardown(); return; }
+      if (!down && !dragging) { if (pointers.size === 0) teardown(); return; }
       down = false; clearTimeout(pressTimer);
       if (dragging) {
         river.classList.remove('is-dragging');
@@ -639,7 +714,7 @@ ${hosts}
         else goToReach(state.reachIndex, true);
         dragging = false;
       }
-      teardown();
+      if (pointers.size === 0) teardown();
     }
     function teardown() {
       if (moveBound) window.removeEventListener('pointermove', moveBound);
@@ -648,27 +723,30 @@ ${hosts}
     }
 
     stream.addEventListener('pointerdown', (e) => {
-      if (e.button != null && e.button !== 0) return;
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (!moveBound) {
+        moveBound = onMove; upBound = onUp;
+        window.addEventListener('pointermove', moveBound, { passive: true });
+        window.addEventListener('pointerup', upBound);
+        window.addEventListener('pointercancel', upBound);
+      }
+      if (pointers.size >= 2) { startPinch(); return; }   // second finger → depth gesture
       down = true; dragging = false; didLong = false;
       startY = e.clientY; startX = e.clientX; downTarget = e.target;
       base = state.reaches[state.reachIndex] || 0;
       pressTimer = setTimeout(() => {
-        if (!down || dragging) return;
+        if (!down || dragging || pinch) return;
         didLong = true; down = false;
         const host = downTarget.closest && downTarget.closest('.host-link');
         if (host) { toggleMute(host.getAttribute('data-host')); host.classList.toggle('is-muting'); buzz(12); render(); }
         else { const art = downTarget.closest && downTarget.closest('article'); if (art) { toggleSave(art.getAttribute('data-story')); buzz(12); } }
-        teardown();
       }, LONG_MS);
-      moveBound = onMove; upBound = onUp;
-      window.addEventListener('pointermove', moveBound, { passive: true });
-      window.addEventListener('pointerup', upBound);
-      window.addEventListener('pointercancel', upBound);
     }, { passive: true });
 
-    // Tap → dive (multi-host) or leave (single). Drags/long-presses suppress the click.
+    // Tap → dive (multi-host) or leave (single). Drags/long-presses/pinch suppress the click.
     stream.addEventListener('click', (e) => {
-      if (dragging || didLong) { e.preventDefault(); didLong = false; return; }
+      if (dragging || didLong || pinch || e.detail > 1) { if (dragging || didLong || pinch) e.preventDefault(); didLong = false; return; }
       const hostLink = e.target.closest('.host-link');
       if (hostLink) { markRead(hostLink.closest('article').getAttribute('data-story')); collapseDive(); return; } // default opens new tab
       const head = e.target.closest('.head');
@@ -680,12 +758,26 @@ ${hosts}
       }
     });
 
-    // Wheel / trackpad: one reach per gesture, no momentum.
+    // Desktop: double-click a line pushes IN one level (toward raw). Centroid = that line.
+    stream.addEventListener('dblclick', (e) => {
+      const art = e.target.closest('article'); if (!art) return;
+      e.preventDefault();
+      const moved = zoomStep(1, e.clientY);
+      if (moved) { showDepth(`→ ${state.zoom}`); setTimeout(hideDepth, 700); }
+    });
+
+    // Wheel / trackpad: one reach per gesture, no momentum. (Ctrl+wheel = pinch-zoom on
+    // trackpads → route to depth, at parity.)
     let wheelLock = false;
     stream.addEventListener('wheel', (e) => {
       e.preventDefault();
       if (wheelLock || Math.abs(e.deltaY) < 4) return;
       wheelLock = true; setTimeout(() => { wheelLock = false; }, 360);
+      if (e.ctrlKey) {
+        const moved = e.deltaY < 0 ? zoomStep(1, e.clientY) : zoomStep(-1, e.clientY);
+        if (moved) { showDepth(`→ ${state.zoom}`); setTimeout(hideDepth, 700); }
+        return;
+      }
       if (e.deltaY > 0) advance(false); else retreat();
     }, { passive: false });
   }
@@ -744,6 +836,13 @@ ${hosts}
       }
 
       if (e.key === '/') { $('prompt').focus(); e.preventDefault(); return; }
+      // Depth keys (desktop parity with pinch): + / = zoom IN (raw), - / _ zoom OUT (threads).
+      if (e.key === '+' || e.key === '=' || e.key === '-' || e.key === '_') {
+        const r = $('stream').getBoundingClientRect();
+        const moved = (e.key === '+' || e.key === '=') ? zoomStep(1, (r.top + r.bottom) / 2) : zoomStep(-1, (r.top + r.bottom) / 2);
+        if (moved) { showDepth(`→ ${state.zoom}`); setTimeout(hideDepth, 700); }
+        e.preventDefault(); return;
+      }
       if (e.key === ' ' || e.key === 'PageDown' || e.key === 'ArrowDown') { advance(true); e.preventDefault(); return; }
       if (e.key === 'PageUp' || e.key === 'ArrowUp') { retreat(); e.preventDefault(); return; }
       if (e.key === 'Home') { goToReach(0, true); e.preventDefault(); return; }
@@ -807,7 +906,6 @@ ${hosts}
 
     bindWordmark();
     bindPrompt();
-    bindZoom();
     bindRiver();
     bindKeyboard();
     bindColophon();

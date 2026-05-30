@@ -223,37 +223,8 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { width: 0; height: 0; display:
 }
 .prompt::placeholder { color: transparent; }
 
-/* ---------- zoom = depth in the hierarchy ---------- */
-/* Stops: raw · stories (default) · threads. A stop appears ONLY when it changes the
-   view (JS hides the rest); the whole dial hides when there is one stop. Active = lit. */
-
-.zoom {
-  display: flex;
-  gap: 7px;
-  align-items: center;
-  margin-top: var(--space-2xs);
-  height: 12px;
-  opacity: 0.5;
-  transition: opacity 240ms ease;
-}
-.zoom:hover, .zoom:focus-within { opacity: 0.9; }
-.zoom[hidden] { display: none; }
-.zoom-notch {
-  width: 22px;
-  height: 3px;
-  padding: 0;
-  border: none;
-  border-radius: 2px;
-  background: color-mix(in oklch, var(--mute) 45%, transparent);
-  cursor: pointer;
-  transition: background-color 220ms ease, height 220ms ease;
-}
-.zoom-notch[hidden] { display: none; }
-.zoom-notch[aria-checked="true"] {
-  background: var(--signal);
-  height: 4px;
-}
-.zoom-notch:focus-visible { outline: 1px solid var(--signal); outline-offset: 3px; }
+/* Zoom = depth is a GESTURE, not a dial (the notched dial was cut — DECISIONS.md earned
+   chrome). The only zoom UI is the transient depth label (below); nothing at rest. */
 
 /* ---------- the river (reach pager) ---------- */
 
@@ -420,12 +391,11 @@ article.is-diving { opacity: 1; }
 /* ---------- focus mode (the diff) ---------- */
 
 body.is-focus-mode .prompt { opacity: 0; pointer-events: none; }
-body.is-focus-mode .zoom { opacity: 0; pointer-events: none; }
 body.is-focus-mode .src { opacity: 0.4; }
 body.is-focus-mode footer { opacity: 0; }
 /* Focus mode quiets the chrome around the diff; the wordmark axes are NOT modulated
    (CASL stays linear 0 — no toy register; wght stays the preset). */
-body .prompt, body .zoom, body .src, body footer { transition: opacity 360ms ease; }
+body .prompt, body .src, body footer { transition: opacity 360ms ease; }
 
 /* ---------- footer (status — internal, quiet) ---------- */
 
@@ -473,6 +443,33 @@ footer {
   height: 4px;
   background: var(--ink);
   opacity: 0.9;
+}
+
+/* ---------- transient depth label (zoom gesture) ---------- */
+/* Surfaces only DURING a zoom gesture (pinch / +- / double-click), names the level, and
+   dissolves on release — the same no-at-rest pattern as the day-scrub. Nothing at rest. */
+.depth-label {
+  position: fixed;
+  left: 50%;
+  top: calc(50% );
+  transform: translate(-50%, -50%) scale(0.96);
+  z-index: 26;
+  padding: 0.3em 0.7em;
+  font-family: var(--face-rec);
+  font-variation-settings: "wght" 460, "CASL" 0, "MONO" 1, "slnt" 0;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  color: var(--bg);
+  background: color-mix(in oklch, var(--signal), var(--ink) 8%);
+  border-radius: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+.depth-label.is-active {
+  opacity: 0.92;
+  transform: translate(-50%, -50%) scale(1);
+  transition: opacity 120ms ease, transform 120ms ease;
 }
 
 /* ---------- colophon ---------- */
@@ -569,10 +566,10 @@ article.is-focused { box-shadow: inset 2px 0 0 0 var(--signal); }
     transition-duration: 0.001ms !important;
   }
   /* The river becomes an instant page-turn; the felt merge becomes an instant recount;
-     the day-scrub and colophon snap; the circadian tween is frozen. */
+     the day-scrub, depth label, and colophon snap; the circadian tween is frozen. */
   #river { transition: none !important; }
   #river.merging { animation: none !important; }
   .first-load article { animation: none !important; }
-  .dim-track, .colophon { transition: opacity 0.001ms !important; }
+  .dim-track, .depth-label, .colophon { transition: opacity 0.001ms !important; }
   html { transition: none !important; }
 }
