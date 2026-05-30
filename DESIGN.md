@@ -52,22 +52,36 @@ is justified by what the eye needs then.
 **Discipline rules (exact, therefore invisible):**
 - **Hue stays warm.** Night/dusk/dawn in the amber band (H ≈ 55–85); midday only nears
   neutral (low chroma, H ≈ 85–90). **Never** cross into cold blue.
-- **Chroma is a whisper** — ≤ ~0.05 on surfaces, the link/active signal ≤ ~0.12.
+- **Chroma is a whisper on the field** — ≤ ~0.05 on bg/ink surfaces. The cool-counterpoint
+  accent is the one licensed exception: up to ~0.15 by day (vivid), softening at night.
 - **Contrast rides a band** — ΔL ≈ 0.65–0.70 midday (alert, ambient-legible) easing to
   ≈ 0.45–0.50 at night (gentle on a dark-adapted eye). Never harsh, never washed out.
 - **Continuous by the minute** off the local clock (clock, not geolocation — privacy).
 
 Anchor states (OKLCH bg / ink, low-chroma throughout — eyeball-tuned, interpolate between):
-- deep night ~02:00 (~2200K): bg `oklch(0.17 0.022 60)` · ink `oklch(0.72 0.018 70)`
-- dawn ~05:30 (~2700K): bg `oklch(0.44 0.030 52)` · ink `oklch(0.30 0.016 50)` (cool-of-warm lean)
-- morning ~09:00 (~5000K): bg `oklch(0.93 0.012 85)` warm paper · ink `oklch(0.25 0.010 80)`
-- midday ~12:30 (~5500K): bg `oklch(0.95 0.008 88)` · ink `oklch(0.22 0.008 80)` (peak ΔL)
-- afternoon ~15:30 (~4500K): bg `oklch(0.88 0.020 78)` · ink `oklch(0.27 0.014 72)` (the lean begins)
-- golden dusk ~19:00 (~3000K): bg `oklch(0.58 0.045 65)` · ink `oklch(0.26 0.020 60)` + P3 reach
-- evening ~22:00 (~2400K): bg `oklch(0.30 0.030 60)` · ink `oklch(0.74 0.020 70)`
+**bg / ink / accent (L C H) — every resting anchor holds ΔL ≥ ~0.55; accent is the cool
+counterpoint, circadian:**
+- deep night ~02:00 (~2200K): bg `0.16 0.020 62` · ink `0.80 0.016 72` · accent `0.68 0.050 198`
+  — light-on-dark; muted-teal relief, smallest chroma (precision in near-darkness)
+- dawn ~05:30 (~2700K): bg `0.20 0.026 56` · ink `0.82 0.018 66` · accent `0.70 0.080 210`
+  — still dark, warming; **accent clearest/bluest** (real dawn light is blue)
+- morning ~09:00 (~5000K): bg `0.94 0.012 92` · ink `0.26 0.012 82` · accent `0.48 0.130 232`
+  — dark-on-light, clean; clear cool blue (clarity, alertness)
+- midday ~12:30 (~5500K): bg `0.96 0.008 94` · ink `0.23 0.008 84` · accent `0.46 0.150 236`
+  — peak ΔL; warm-cream-read-as-white + accent most vivid (max complementary)
+- afternoon ~15:30 (~4500K): bg `0.90 0.018 82` · ink `0.27 0.014 76` · accent `0.48 0.120 222`
+  — the lean: field warms toward gold, accent retreats blue→teal
+- golden dusk ~19:00 (~3000K): bg `0.85 0.032 72` · ink `0.28 0.020 62` · accent `0.50 0.110 196`
+  — **light, not mid-gray**; the warm/cool **duet** (field richest) + P3 reach
+- evening ~22:00 (~2400K): bg `0.25 0.028 60` · ink `0.82 0.020 70` · accent `0.66 0.060 200`
+  — light-on-dark; diminuendo, cool note softening back to muted teal
 
-(All values are the *baked output* of the build-time derivation, eyeball-verified on screen
-— adjust within the discipline, never breaking it.)
+**No resting anchor in the lightness dead zone (~0.40–0.68).** The polarity flips
+(light-on-dark ↔ dark-on-light) **fast, between anchors, timed to actual sunrise/sunset** —
+shape the `--t`→L curve steep through the middle so no hour rests in the unreadable valley
+(this was the dawn ΔL≈0.14 failure). Accent must also clear its APCA target against `--bg`
+(darken the daytime accent a touch if links read weak). All values are baked, eyeball-tuned
+on screen — adjust within the discipline, never breaking it.
 
 **The palette is DERIVED, not chosen — that is what makes it invisible-bold.** It should
 read as *inevitable* (the eye recognizes real light), never as *designed*. The derivation,
@@ -93,20 +107,29 @@ in layers:
   - *Deep night ~02:00* — **precision in near-darkness**: smallest chroma, near-monochrome
     ember, separation carried by value, the single warm note at the exact mesopic/Purkinje
     angle that stays luminous instead of muddy. Restraint *is* the boldness.
-  - *Dawn ~05:30* — the one hour a **whisper of cool** is allowed (warm sky, cool shadow):
-    ink leans a hair cooler-of-warm, the micro-tension makes it the most *alive* state.
+  - *Dawn ~05:30* — **the cool note at its clearest**, because real dawn light is blue
+    (civil twilight): the still-dark warm field against its bluest accent — the most *alive*
+    state, warm and cool in true tension.
   - *Morning ~09:00* — **clarity**: the Bezold–Brücke correction held tightest, one clean
-    directional light, zero hue drift; the accent at its most honest gold.
+    directional light, zero hue drift; the cool accent crisp and clear against warm paper.
   - *Midday ~12:30* — **invisible warmth at peak brightness**: a warm cream the adapted eye
     reads as white but the body reads as paper (never stark `#fff`); H–K accent glow.
   - *Afternoon ~15:30* — **the lean**: hue begins rotating toward gold, chroma starts to
     rise — the day tipping, felt before seen.
-  - *Golden dusk ~19:00* — **the crescendo**: the P3/wide-gamut reach lives here
-    (`@media (color-gamut: p3)`, graceful sRGB clamp), accent at its most luminous; the
-    richest state, placed where daylight is actually richest.
+  - *Golden dusk ~19:00* — **the crescendo, a warm/cool duet**: the warm field at its
+    richest *with* the cool accent in complementary counterpoint (P3 reach here, graceful
+    sRGB clamp) — maximum chromatic life, exactly where daylight is richest.
   - *Evening ~22:00* — **the diminuendo**: a controlled chroma step-down from the peak, hue
     settling, contrast easing to the night band — resolution, not mere dimming.
-- **One near-analogous accent only**; **value carries the composition, hue stays a whisper.**
+- **One cool-counterpoint accent — structural, not decoration.** A near-monochrome warm
+  field neutralizes under adaptation within ~60s; a single cool note is **what keeps the
+  warmth reading as warm** (simultaneous contrast + the adaptation reference). It is
+  complementary to the field, lives **only on interactivity** (links / focus / the dive —
+  never on content, so equal weight holds), and its relationship is **circadian**: bluest at
+  dawn (true twilight), vivid by day, a warm/cool duet at dusk, a soft muted teal at night
+  (never a melatonin blue; tiny in area, so the screen stays warm). **Value carries the
+  composition; the field's hue stays a whisper — the accent is the single licensed note of
+  real chroma.**
   Because the Planckian spine is *continuous*, minutes between anchors are samples of the
   same physically-real curve — not dumb blends — so an hour visited at 16:40 is as composed
   as one at 15:30. Every hour visited, the same polish.
