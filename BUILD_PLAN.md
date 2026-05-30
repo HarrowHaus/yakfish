@@ -139,6 +139,40 @@ ROADMAP's KEEP/CHANGE/ADD/REMOVE), obey CLAUDE.md, commit via `committer`, repor
 
 ---
 
+## HANDOFF — Phase 3.5: design refinement  ·  set `opusplan`
+
+Refines the Phase 3 renderer; not new scope. `opusplan` because the dim curve and the
+zoom-hierarchy rework want reasoning.
+
+**PASTE ↓**
+> Read `CLAUDE.md`, `PRODUCT.md` (the zoom dial), and `DESIGN.md` (the revised `--dim`
+> circadian curve, the wordmark preset, the static semantic axes, the colophon rehide).
+> Proceed with the Phase 3 design-refinement pass exactly as those docs specify, refactoring
+> the existing renderer:
+> 1. **`--dim` circadian curve** — replace the keyframes with a continuous OKLCH function of
+>    the local clock using the derived anchor states + discipline rules (warm hue always,
+>    never cold-blue, whisper chroma, controlled ΔL band, every hour its own composition).
+>    **The Planckian + appearance-model derivation is a BUILD-TIME step whose output is the
+>    handful of baked OKLCH anchors already in `DESIGN.md`; the runtime stays the lean
+>    one-scalar (`--t`) engine interpolating those baked anchors via `color-mix` /
+>    relative-color — do NOT pull in a color library or run an appearance model on the page.**
+> 2. **Horizontal day-scrub** — wordmark dim-adjust drag is left<->right, transient track,
+>    snap-to-clock detent, session-scoped, no "return to automatic" text. **Dim changes only
+>    color/luminance — never any layout metric (no reflow under the finger).**
+> 3. **Wordmark preset** — `wght~540, CASL~0, MONO~0.55, slnt 0`.
+> 4. **`MONO` as the data axis** — monospace for timestamps, source/host names, URL, counts;
+>    proportional for reading text. No axis animates.
+> 5. **Zoom = depth in the hierarchy** — raw/stories/threads = 0/1/2 dive layers; a level
+>    appears only when it changes the view (auto-collapse redundant/empty stops); zooming is
+>    a felt merge (reduced-motion: instant). Threads stay stubbed until the GKG track.
+> 6. **Colophon** retracts smoothly on scroll-up (mirror its reveal; reduced-motion instant).
+> Gate ALL motion behind `prefers-reduced-motion`; honor `prefers-contrast` / `color-gamut: p3`
+> where `DESIGN.md` calls for it. Obey every NEVER/ALWAYS in `CLAUDE.md`. Commit via the
+> `committer` subagent and report what changed, plus how each dim anchor reads on screen at
+> its hour.
+
+---
+
 ## HANDOFF — Phase 4: sources hardening  ·  set `sonnet`
 
 **Relay first:** paste the repo's current `feeds.json` to the Planner so the exact
