@@ -93,6 +93,21 @@ removed), not merely trust the renderer. This also independently justifies retir
 **Google News RSS** as a *commercial* dependency: its terms aren't a clear redistribution
 grant (gray), whereas **GDELT grants redistribution explicitly** with attribution.
 
+## GDELT via raw files, not the query API — *why*
+
+The GDELT **DOC query API** has no SLA and 503s/ rate-limits (verified: a sustained 503
+window while the **raw file server returned 200 in 124 ms**, serving the latest
+`*.gkg.csv.zip`). So ingest GDELT from its **raw 15-minute files** on
+`data.gdeltproject.org` (static downloads), not the query API. This (1) fixes reliability
+— static fetches don't fall over like the hosted query service; (2) unlocks the **GKG**
+(themes/entities) that powers event-level multi-host clustering — Clustering v2 comes
+*with* the raw move, not as a separate project; (3) removes the 1-request-per-5s rate
+limit entirely. Pair it with **direct-publisher RSS as the always-on floor** (independent
+of GDELT — it carried the wire at 217 stories during a real GDELT outage) and keep the
+GDELT→RSS→last-good→JSONL fallback. Nothing free matches GDELT's free + redistributable +
+global + entity-granular combination, so the move is to consume it *robustly*, not replace
+it. This is a sourcing refinement, not a product rescope.
+
 ## Deploy: Cloudflare Pages — *why*
 
 Unlimited static bandwidth at ~$0 for the static front door; Pages Functions cover

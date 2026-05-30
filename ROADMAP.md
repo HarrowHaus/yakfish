@@ -224,6 +224,15 @@ Goal: accountless power features; the only per-user cost, kept safe + cheap.
       (provided); confirm it runs on push. *(Haiku.)*
 - [ ] **Field-discipline guard**: a tiny test asserting the emitted JSON has only the four
       allowed fields. *(Sonnet.)*
+- [ ] **GDELT raw + GKG ingestion** *(backend track — supersedes the DOC-API pull; do after
+      Phase 3, testable now since the raw server is up)*. Replace the flaky DOC **query API**
+      with the **raw 15-minute files** on `data.gdeltproject.org` (download → unzip → parse
+      the `*.gkg.csv` → filter to news rows → map to the four fields + entity/theme keys).
+      One move fixes three things: reliability (static files don't 503), clustering (GKG
+      entities/themes = Clustering v2 event-level grouping), and the rate limit (no query API,
+      no 1-per-5s cap — so the separate throttle task is moot). Keep RSS as the always-on floor
+      and the fallback chain intact. Build conservatively on clustering (under- before
+      over-cluster; never merge on a single shared entity; never use tone). *(opusplan.)*
 - [ ] **OPML + JSON export/import**: read/write OPML for feeds, JSON for saved/pins/settings;
       bundle as the portable state file. *(Sonnet.)*
 - [ ] **Clustering v2 — GKG-assisted event grouping** *(deferred; evaluate AFTER Phase 4)*.
