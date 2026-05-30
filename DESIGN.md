@@ -73,7 +73,7 @@ counterpoint, circadian:**
   — the lean: field warms toward gold, accent retreats blue→teal
 - golden dusk ~19:00 (~3000K): bg `0.85 0.032 72` · ink `0.28 0.020 62` · accent `0.50 0.110 196`
   — **light, not mid-gray**; the warm/cool **duet** (field richest) + P3 reach
-- evening ~22:00 (~2400K): bg `0.25 0.028 60` · ink `0.82 0.020 70` · accent `0.66 0.060 200`
+- evening ~22:00 (~2400K): bg `0.25 0.028 60` · ink `0.82 0.020 70` · accent `0.70 0.060 200`
   — light-on-dark; diminuendo, cool note softening back to muted teal
 
 **No resting anchor in the lightness dead zone (~0.40–0.68).** The polarity flips

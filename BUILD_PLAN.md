@@ -165,6 +165,12 @@ zoom-hierarchy rework want reasoning.
 > 5. **Zoom = depth in the hierarchy** — raw/stories/threads = 0/1/2 dive layers; a level
 >    appears only when it changes the view (auto-collapse redundant/empty stops); zooming is
 >    a felt merge (reduced-motion: instant). Threads stay stubbed until the GKG track.
+>    **Remove the notched zoom dial shipped in Phase 3 — depth is a gesture, not a control
+>    at rest: pinch on mobile (pinch-in → threads, pinch-out → raw; the line at the pinch
+>    centroid held stable; the pinch IS the merge animation), and `zoom …` / `+`/`-` /
+>    double-click on desktop, folded onto the existing command surface. A depth label
+>    surfaces only during the gesture and dissolves on release (same transient pattern as
+>    the dim scrub); nothing at rest. Pinch and command-bar at full parity.**
 > 6. **Colophon** retracts smoothly on scroll-up (mirror its reveal; reduced-motion instant).
 > Gate ALL motion behind `prefers-reduced-motion`; honor `prefers-contrast` / `color-gamut: p3`
 > where `DESIGN.md` calls for it. Obey every NEVER/ALWAYS in `CLAUDE.md`. Commit via the
@@ -185,6 +191,39 @@ down-list is triaged (the Planner can't see your repo). Then:
 > store a `news.google.com` URL as a link-out). Obey every NEVER/ALWAYS in `CLAUDE.md`.
 > Run a build to confirm `latest.json` stays populated; when the Phase 4 checks pass,
 > commit via `committer` and report: "Phase 4 done — no opaque link-outs, build populated."
+
+---
+
+## HANDOFF — GDELT raw + GKG ingestion (the data backbone)  ·  set `opusplan`
+
+The visual layer is polished, but the default river (stories) and the zoom layers (threads)
+currently run on the **title-match `dupeKey` proxy** — a weak stand-in. This track makes the
+data real: it turns "stories" into GDELT's own event grouping and lights up threads +
+real multi-host clustering. Highest-leverage move after the design pass. `opusplan` because
+the clustering is the part a wrong call corrupts.
+
+**PASTE ↓**
+> Read `CLAUDE.md`, the GDELT-raw backend track in `ROADMAP.md`, `ARCHITECTURE.md` §1a
+> (GDELT raw files), §3 + **§3a** (the dedup/clustering substrate and the GDELT-native
+> `article ⊂ event ⊂ thread` ladder), §6 (output schema), §10 (failure modes / fallback
+> chain), and the "GDELT via raw files" entry in `DECISIONS.md`. Proceed exactly as written:
+> 1. **Replace the DOC query-API pull with the raw 15-minute files** — read
+>    `lastupdate.txt`, fetch the `*.export.CSV.zip` (events), `*.mentions.CSV.zip` (the
+>    join), and `*.gkg.csv.zip` (articles); unzip, parse (tab-delimited despite the `.csv`),
+>    filter to news, map to the four fields + the entity/theme keys.
+> 2. **Build the real "story" rung from `GlobalEventID`** — group articles via the Mentions
+>    table (one event → its covering articles); this replaces the title-match `dupeKey` as
+>    the primary grouping, with `dupeKey` kept as the fallback when no EventID exists (soft
+>    news stays at the article level — that's correct, not a bug).
+> 3. **Extract GKG entities + themes** to enable conservative **thread** clustering (the
+>    event→thread rung). Under-cluster before over-cluster; never merge on a single shared
+>    entity; **never use tone / Goldstein / GCAM** (equal weight, no editorializing).
+> 4. Keep the **GDELT→RSS→last-good→JSONL fallback chain** (§10) intact — RSS is the
+>    always-on floor. Emit `latest.json` + `archive/*.jsonl` per §6 with `sources[]` and the
+>    stable IDs (§3).
+> Obey every NEVER/ALWAYS in `CLAUDE.md`. Commit via `committer` and report: the article /
+> event / thread counts from a real build, how many events have >1 host, and how many threads
+> formed — so we can confirm the layers are real before judging the zoom on screen.
 
 ---
 
