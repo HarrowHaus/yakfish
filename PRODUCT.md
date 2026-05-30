@@ -100,17 +100,22 @@ One element doing the navigation, two parts:
 - a **typing field** — plain text to filter, plus `@source`, `@section`, `@saved`,
   and (paid) **paste a feed URL to add an RSS source** (subscription, filtering, and
   feed-management collapse into this one input — no settings screen);
-- a **slider** that is a **zoom / density dial.** It controls *resolution* and
-  *density together* — they are one axis, because more clustering means fewer items,
-  which means fewer per screen:
-  - **dense end** — raw headlines, every record, many per reach (the firehose);
-  - **middle (detented default)** — deduped stories, comfortable density;
-  - **sparse end** — topic clusters, approaching **one item per screen** (the focused
-    deck feel).
+- a **zoom dial** that sets your **depth in the story hierarchy** (article ⊂ event ⊂
+  thread, built from GDELT's GKG). This is the **same axis as the dive, entered from the
+  outside**: zooming out adds a layer of structure you then dive *through*; zooming in
+  strips layers away. The river is a horizontal cross-section through one vertical
+  hierarchy at the depth you've set.
+  - **Raw** — a line is one article; tap → straight to source (0 dive layers).
+  - **Stories** (default) — a line is one event; tap → its hosts → source (1 layer).
+  - **Threads** — a line is one ongoing thread; tap → its stories → hosts → source (2 layers).
 
-  So "one item per screen" is not a separate mode anyone picks — it's where you land
-  zoomed all the way in. Position is legible by a notch; the line-count changes as it
-  moves. **Nothing breathing, glowing, or pulsing.**
+  **A level exists only when it changes the view.** If dedup merges nothing, the dial does
+  not offer "stories" as distinct from "raw"; if there are no multi-story threads, the
+  thread stop disappears. There is never an empty cluster layer. Zooming out is a **felt
+  merge** — lines visibly collapse into their parent (reduced-motion: instant), so the
+  motion *is* the meaning, not a silent recount. (The full three-level depth blooms once
+  the GKG ingestion feeds real themes; with title-match only it correctly shows ~one
+  usable stop rather than faking depth.) Position legible by a notch; nothing glowing.
 
 ## Focus mode = the diff
 

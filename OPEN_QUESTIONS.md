@@ -36,11 +36,13 @@ Settled with #2.
 The cluster still exists in the data; a pinned-source user may choose to fall straight
 through to their source. Paid-tier polish, not v1.
 
-### 5. Granularity slider → a **zoom / density dial** (resolution and per-screen density
-are one axis). Detents: **raw headlines · deduped stories · topic clusters**, default =
-middle. The **sparse end approaches one item per screen** — so the "deck" feel is just
-the zoomed-in extreme, not a separate mode. Position shown by a notch; line-count changes
-as it moves. (`@saved` etc. are filters in the typing field, not granularity.)
+### 5. Zoom dial → **depth in the GKG story hierarchy** (article ⊂ event ⊂ thread) — the
+same axis as the dive, entered from the outside. Raw (0 dive layers) · Stories (1) ·
+Threads (2). **A level appears only when it changes the view** (no empty cluster layer;
+auto-collapses redundant stops); zooming out is a *felt merge*, not a recount. Full
+three-level depth depends on the GKG ingestion (the raw/GKG track) — until then it shows
+~one usable stop honestly. (`PRODUCT.md`, `DESIGN.md`.) *Decided — supersedes the old
+density-dial framing.*
 
 ### 6. `--dim` control → **no persistent bar; folded onto the wordmark; automatic is the
 resting state.** The page background *is* the dim state, so the v14 chromatic bar and the
@@ -62,10 +64,15 @@ Honors the no-telemetry line.
 
 ## GENUINELY OPEN
 
-### A. In-hand gesture tuning (the only design unknown)
-Damping strength, reach overlap (how much context carries between reaches), haptic
-intensity, the firmness of the line detent, and the exact input binding. These are
-feel calls — prototype and tune on a device; don't over-specify on paper.
+### A. On-screen / in-hand tuning (eyeball, not paper)
+- **Gesture feel:** damping strength, reach overlap, haptic intensity, line-detent
+  firmness, input binding.
+- **Wordmark coordinates:** the revised preset (`wght≈540, CASL≈0, MONO≈0.55`) is a
+  reasoned starting point — tune the exact axis values on screen (`DESIGN.md`).
+- **Dim curve:** the OKLCH anchor states and the contrast/chroma band are designed
+  values to verify on a real display across the day (`DESIGN.md`); adjust within the
+  discipline rules (warm hue, whisper chroma, controlled ΔL), never breaking them.
+- **Horizontal dim-scrub:** the throw/sensitivity of the left↔right wordmark day-scrub.
 
 ### B. Your-side errands (non-code) — owner action
 - Secure handles: GitHub org, X, Instagram (brand as yak.fish / Yakfish, never bare "Yak").

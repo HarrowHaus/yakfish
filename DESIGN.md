@@ -18,9 +18,13 @@ it is rendered through the calm form described here.** Where the old build said
 ## Two faces, minimum files
 
 - **Recursive Variable** — wordmark, UI, filter, timestamps, source lines. yak.fish's
-  identity is a *coordinate* in axis space, not a font name (wordmark preset
-  wght≈620, CASL≈0.85, MONO 0, slnt 0; a mono preset wght≈400, CASL 0, MONO 1 for
-  filter/timestamps/sources).
+  identity is a *coordinate* in axis space, not a font name. **Wordmark preset (revised):
+  `wght≈540, CASL≈0, MONO≈0.55, slnt 0, CRSV 0`** — *linear* (CASL 0, an instrument not a
+  toy; the old CASL 0.85 read cutesy and off-tone), a *monospace lean* (MONO 0.55 gives
+  "yak.fish" an even, measured cadence fitting a URL-form wordmark and the wire lineage,
+  without looking like literal code), *medium* weight (calmer than 620), upright. Exact
+  values eyeball-tuned on screen. A full-mono preset (`MONO 1`) is used for data — see the
+  axes section below.
 - **Atkinson Hyperlegible** (static) — headlines and body. Legibility-engineered.
   **Headlines stay static** — never carry variable-axis state — both for legibility
   and to keep the two-face discipline. Headline state (read, saved) shows through
@@ -30,27 +34,43 @@ it is rendered through the calm form described here.** Where the old build said
 
 ## One chromatic variable: `--dim`, time-of-day
 
-A single OKLCH variable drives the page's color temperature/brightness across the day.
-**The page background *is* the dim state** — so there is no separate bar or slider to
-display it (a control whose job is to show the chromatic state would duplicate the page
-itself, and a standing adjust-control would be unearned chrome sitting unused). The v14
-chromatic bar under the wordmark is **removed**; the right-edge scroll slider is
-**removed** (no free scroll → nothing to point at).
+A single OKLCH variable drives the page's color across the day. **The page background
+*is* the dim state** — no bar or slider displays it (the v14 chromatic bar and the
+right-edge scroll slider are both removed). It is **comfort, not mood**: each hour's state
+is justified by what the eye needs then.
 
-- **Automatic by default.** `--dim` is computed from the device's **local clock** —
-  warmer/dimmer toward night, cooler/brighter by day. No one touches it; comfort served
-  automatically is the most latent (best) form.
-- **Adjust by folding onto the wordmark.** The wordmark's color already *is* the
-  current `--dim` (time-of-day), so the wordmark is the handle: **grab it and drag** to
-  nudge the dim. A transient chromatic track surfaces only *while* dragging and dissolves
-  on release — zero at-rest footprint. (Exact gesture/throw is in-hand tuning.)
-- **Automatic is the resting state, not a toggle.** There is **no "return to automatic"
-  button or text** (that would be unearned). Instead: the override is **session-scoped,
-  not persisted** — every fresh open re-reads the clock and is automatic again. (Change
-  from v14, which persists `wire.dim`; stop persisting it.) Within a session, the
-  automatic clock value is a **felt detent** in the drag — snap to it to hand control back.
-- **Still at rest.** Nothing breathes, glows, or pulses. **`prefers-reduced-motion`
-  freezes all of it** and every other animation.
+**A continuous circadian curve, grounded in prior art (not arbitrary keyframes):**
+- *f.lux / Night Shift* — the color-temperature ramp: ~5500K warm-daylight midday →
+  ~3400K halogen dusk → ~2200K ember deep night. Warmth rises as the sun falls.
+- *Solarized* — the discipline: controlled perceptual-lightness deltas, deliberately low
+  saturation. Steal the rigor, not the colors.
+- *Kindle amber warm light / e-ink paper* — the surface is **warm paper**, never stark
+  `#fff` (harsh) and **never blue-black** (dead, and blue light at night is anti-comfort —
+  the v14 "ink black / night indigo" sin). Day = warm paper-white; night = warm ember.
+- *OKLCH* — perceptually uniform, so the curve interpolates without the v14 banding.
+
+**Discipline rules (exact, therefore invisible):**
+- **Hue stays warm.** Night/dusk/dawn in the amber band (H ≈ 55–85); midday only nears
+  neutral (low chroma, H ≈ 85–90). **Never** cross into cold blue.
+- **Chroma is a whisper** — ≤ ~0.05 on surfaces, the link/active signal ≤ ~0.12.
+- **Contrast rides a band** — ΔL ≈ 0.65–0.70 midday (alert, ambient-legible) easing to
+  ≈ 0.45–0.50 at night (gentle on a dark-adapted eye). Never harsh, never washed out.
+- **Continuous by the minute** off the local clock (clock, not geolocation — privacy).
+
+Anchor states (OKLCH bg / ink, low-chroma throughout — eyeball-tuned, interpolate between):
+- deep night ~02:00 (~2200K): bg `oklch(0.17 0.022 60)` · ink `oklch(0.72 0.018 70)`
+- morning ~09:00 (~5000K): bg `oklch(0.93 0.012 85)` warm paper · ink `oklch(0.25 0.010 80)`
+- midday ~12:30 (~5500K): bg `oklch(0.95 0.008 88)` · ink `oklch(0.22 0.008 80)` (peak ΔL)
+- golden dusk ~19:00 (~3000K): bg `oklch(0.58 0.045 65)` · ink `oklch(0.26 0.020 60)`
+- evening ~22:00 (~2400K): bg `oklch(0.30 0.030 60)` · ink `oklch(0.74 0.020 70)`
+
+**Adjust = a horizontal day-scrub on the wordmark.** The wordmark's color already *is* the
+current `--dim`, so it is the handle: **drag it left↔right to scrub the day** (dawn ← →
+night) — *horizontal because it is time, and time reads horizontally.* A transient track
+surfaces only while dragging and dissolves on release; the clock value is a **felt detent**
+— snap to it to hand control back. Override is **session-scoped, not persisted** (every
+open re-reads the clock); **no "return to automatic" text** (unearned).
+`prefers-reduced-motion` freezes all transition.
 
 ## Equal weight (anti-domination, as a visual law)
 
@@ -60,14 +80,18 @@ There is **no volume-sizing**, no headline-weight-as-importance, no urgency/brea
 marker (`DECISIONS.md`). The only honest coverage signal is host count, and it is
 *felt* via dive depth (`PRODUCT.md`), never rendered as emphasis or order.
 
-## The font axes as state channels (used intuitively)
+## The variable axes as static, semantic channels
 
-Recursive's axes may carry below-perceptible state — *felt, not read* — within a
-small channel budget (~3–4 visual channels, ~3 levels each; lean on position, the
-strongest channel). Examples in use: timestamp `CASL` decays with age; source line
-tints subtly with recency. Keep each channel below the threshold where it "shouts";
-if it reads as emphasis, it's too much. **None of this may encode importance or
-reorder anything** — equal weight holds.
+The axes are **utilized — but only to encode fixed distinctions, never animated, never
+decorative** (we already killed weight-breath and slant-on-scroll; no axis decays with
+age — chronological position already carries recency, and a decaying axis was flashy):
+- **`MONO` is the data/prose axis.** Monospace (`MONO 1`) for every *datum* — timestamps,
+  source/host names, the URL, counts: precise, tabular, machine-truth (the provenance
+  lineage). Proportional for human reading text. The axis itself *says* "record vs language."
+- **`wght` is static structural hierarchy** — wordmark > labels > timestamps. **Never**
+  used to rank or emphasize stories; equal weight holds.
+- **`CASL` is held near 0 (linear)** for the instrument register; it is not modulated.
+Headlines stay static Atkinson; their state (read, saved) shows via tint/position only.
 
 ## The wordmark
 
@@ -99,7 +123,10 @@ presence that allows — summoned by use, gone on release.
 Fluid via `clamp()` between 360 px and 1240 px (Utopia spirit — design as a
 continuous function of viewport, not a set of breakpoints). The colophon is reached
 by overscrolling past the bottom (or `?`), and carries the rules, the keyboard/touch
-legend, the filter syntax, and the manual `--dim` reset.
+legend, the filter syntax, and the manual `--dim` reset. It **retracts smoothly on the
+way back up** — it mirrors its own reveal transition (slides/fades closed as you scroll
+toward the river), never snapping shut; `prefers-reduced-motion` makes both directions
+instant.
 
 ## What the page is
 
