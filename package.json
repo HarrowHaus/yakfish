@@ -1,5 +1,5 @@
 {
-  "name": "public-wire-database",
+  "name": "yakfish",
   "version": "1.0.0",
   "description": "A brutally simple source-linked live headline database using public RSS and GDELT sources.",
   "type": "module",

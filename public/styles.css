@@ -1,4 +1,4 @@
-/* wire — savant aggregator (v=14)
+/* yak.fish — savant aggregator (v=14)
  *
  * Six surfaces, two faces, one chromatic variable. See DESIGN.md.
  *
@@ -9,7 +9,7 @@
  *   5. Each article        — tap to open, long-press to save, dimmed if read
  *   6. The grain           — fetch clock, freshness, connection state
  *
- * Type is Recursive Variable, set at wire's axis coordinates. The wordmark's
+ * Type is Recursive Variable, set at yak.fish's axis coordinates. The wordmark's
  * five variable axes (wght/CASL/MONO/slnt + color) are five state channels.
  * Atkinson Hyperlegible is the static reading face for body and headlines.
  * All sizes and spacing use clamp() interpolation between 360px and 1240px.

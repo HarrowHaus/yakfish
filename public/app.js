@@ -1,4 +1,4 @@
-/* wire — savant aggregator (v=14)
+/* yak.fish — savant aggregator (v=14)
  *
  * Six surfaces, two faces, five Recursive axes as state channels.
  * See DESIGN.md for the full design system.
@@ -32,7 +32,7 @@
     { at: 0.84, bg: '#0a2c34', ink: '#b4b498', mute: '#888068', signal: '#b45a2c', label: 'petrol' },
     { at: 0.90, bg: '#0c1820', ink: '#aca890', mute: '#807060', signal: '#b05828', label: 'slate' },
     { at: 0.96, bg: '#0a0e14', ink: '#a09c84', mute: '#786c5c', signal: '#ac5626', label: 'ink black' },
-    { at: 1.00, bg: '#07090c', ink: '#98947c', mute: '#706858', signal: '#a85226', label: 'wire terminus' }
+    { at: 1.00, bg: '#07090c', ink: '#98947c', mute: '#706858', signal: '#a85226', label: 'terminus' }
   ];
 
   const state = {
@@ -101,18 +101,34 @@
 
   /* ---------- localStorage ---------- */
 
-  function loadPersisted() {
-    try { const s = localStorage.getItem('wire.dim'); if (s !== null) state.dim = Number(s) || 0; } catch (_) {}
-    try { const r = localStorage.getItem('wire.read');  if (r) state.readSet  = new Set(JSON.parse(r)); } catch (_) {}
-    try { const s = localStorage.getItem('wire.saved'); if (s) state.savedSet = new Set(JSON.parse(s)); } catch (_) {}
-    try { state.lastVisitISO = localStorage.getItem('wire.lastVisit'); } catch (_) {}
-    try { state.hasVisitedBefore = localStorage.getItem('wire.visited') === '1'; } catch (_) {}
+  // One-time rebrand migration: wire.* → yakfish.* (read-old, write-new, drop-old).
+  // Runs once per device; preserves seen/saved/visit state across the rename.
+  function migrateStorage() {
+    try {
+      if (localStorage.getItem('yakfish.migrated') === '1') return;
+      for (const k of ['dim', 'read', 'saved', 'lastVisit', 'visited']) {
+        const oldVal = localStorage.getItem('wire.' + k);
+        if (oldVal !== null && localStorage.getItem('yakfish.' + k) === null) {
+          localStorage.setItem('yakfish.' + k, oldVal);
+        }
+        localStorage.removeItem('wire.' + k);
+      }
+      localStorage.setItem('yakfish.migrated', '1');
+    } catch (_) {}
   }
-  function persistDim()   { try { localStorage.setItem('wire.dim',   String(state.dim)); } catch (_) {} }
-  function persistRead()  { try { const a = [...state.readSet].slice(-500); state.readSet = new Set(a); localStorage.setItem('wire.read', JSON.stringify(a)); } catch (_) {} }
-  function persistSaved() { try { localStorage.setItem('wire.saved', JSON.stringify([...state.savedSet])); } catch (_) {} }
-  function persistVisit() { try { localStorage.setItem('wire.lastVisit', new Date().toISOString()); } catch (_) {} }
-  function persistVisited() { try { localStorage.setItem('wire.visited', '1'); } catch (_) {} }
+
+  function loadPersisted() {
+    try { const s = localStorage.getItem('yakfish.dim'); if (s !== null) state.dim = Number(s) || 0; } catch (_) {}
+    try { const r = localStorage.getItem('yakfish.read');  if (r) state.readSet  = new Set(JSON.parse(r)); } catch (_) {}
+    try { const s = localStorage.getItem('yakfish.saved'); if (s) state.savedSet = new Set(JSON.parse(s)); } catch (_) {}
+    try { state.lastVisitISO = localStorage.getItem('yakfish.lastVisit'); } catch (_) {}
+    try { state.hasVisitedBefore = localStorage.getItem('yakfish.visited') === '1'; } catch (_) {}
+  }
+  function persistDim()   { try { localStorage.setItem('yakfish.dim',   String(state.dim)); } catch (_) {} }
+  function persistRead()  { try { const a = [...state.readSet].slice(-500); state.readSet = new Set(a); localStorage.setItem('yakfish.read', JSON.stringify(a)); } catch (_) {} }
+  function persistSaved() { try { localStorage.setItem('yakfish.saved', JSON.stringify([...state.savedSet])); } catch (_) {} }
+  function persistVisit() { try { localStorage.setItem('yakfish.lastVisit', new Date().toISOString()); } catch (_) {} }
+  function persistVisited() { try { localStorage.setItem('yakfish.visited', '1'); } catch (_) {} }
 
   /* ---------- dim / chromatic ---------- */
 
@@ -1040,8 +1056,9 @@
   /* ---------- boot ---------- */
 
   function boot() {
+    migrateStorage();
     loadPersisted();
-    if (state.dim === 0 && !localStorage.getItem('wire.dim')) {
+    if (state.dim === 0 && !localStorage.getItem('yakfish.dim')) {
       state.dim = computeTimeOfDay();
     }
     updateTimeOfDay();
