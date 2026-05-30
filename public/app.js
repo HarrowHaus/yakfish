@@ -7,7 +7,7 @@
 (() => {
   'use strict';
 
-  const ENDPOINTS = ['/api/news', '/.netlify/functions/news', 'cache/news.json'];
+  const ENDPOINTS = ['cache/latest.json', '/api/news', '/.netlify/functions/news', 'cache/news.json'];
   const POLL_MS = 60_000;
   const STALE_MS = 5 * 60_000;
   const BUFFER_HOURS = 26;

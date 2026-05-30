@@ -10,6 +10,7 @@
     "validate:news": "node scripts/validate-news.mjs",
     "build:cache": "node scripts/build-static-cache.mjs",
     "check": "node --check server.mjs && node --check api/news.js && node --check lib/build-news.js && node --check public/app.js && node --check netlify/functions/news.mjs && node --check scripts/archive-news.mjs",
+    "test": "node test/cluster.test.mjs",
     "release:zip": "node scripts/make-release-zip.mjs",
     "archive:news": "node scripts/archive-news.mjs"
   },
