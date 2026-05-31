@@ -13,7 +13,7 @@
   'use strict';
 
   const ENDPOINTS = ['cache/latest.json', '/api/news', '/.netlify/functions/news', 'cache/news.json'];
-  const POLL_MS = 60_000;
+  const POLL_MS = 180_000;   // calm cadence; conditional GET makes most polls cheap 304s
   const BUFFER_HOURS = 26;
   const STOP = new Set(['the','a','an','live','update','updates','breaking','and','of','in','on','to','for']);
 
@@ -69,6 +69,9 @@
     keySequence: '',
     keySeqTimer: null,
     stories: new Map(),
+    pending: new Map(),       // new arrivals HELD at the now-edge; folded in only on pull-to-now
+    pendingUpdatedAt: null,
+    validators: {},           // per-endpoint { etag, lastModified } for conditional GET
     entries: [],
     reaches: [0],
     reachIndex: 0,
@@ -234,7 +237,7 @@
         if (state.isFocusMode) toggleFocusMode();
         $('prompt').focus();
       } else {
-        pendingTap = setTimeout(() => { goToReach(0, true); tick(true); }, 280);
+        pendingTap = setTimeout(() => { pullToNow(); }, 280);   // tap = pull to now (fold held arrivals)
       }
     }
     word.addEventListener('pointerup', end);
@@ -403,9 +406,22 @@
 
   /* ---------- fetch / ingest ---------- */
 
+  // Conditional GET: no cache-buster, no no-store — we manage freshness with validators.
+  // We store the response's ETag / Last-Modified and send them back as If-None-Match /
+  // If-Modified-Since, so an unchanged file returns a cheap 304 (no body, no work).
   async function tryFetch(ep) {
-    const res = await fetch(`${ep}?t=${Date.now()}`, { headers: { accept: 'application/json' }, cache: 'no-store' });
+    const headers = { accept: 'application/json' };
+    const v = state.validators[ep];
+    if (v) {
+      if (v.etag) headers['If-None-Match'] = v.etag;
+      if (v.lastModified) headers['If-Modified-Since'] = v.lastModified;
+    }
+    const res = await fetch(ep, { headers });
+    if (res.status === 304) return { notModified: true, endpoint: ep };
     if (!res.ok) throw new Error(`${ep} ${res.status}`);
+    const etag = res.headers.get('etag');
+    const lastModified = res.headers.get('last-modified');
+    state.validators[ep] = { etag, lastModified };
     const data = await res.json();
     if (!Array.isArray(data.stories)) throw new Error(`${ep} no stories`);
     return { data, endpoint: ep };
@@ -424,6 +440,29 @@
       state.stories.set(s.id, s);
     }
     state.updatedAt = data.updatedAt || new Date().toISOString();
+  }
+
+  // Stories in a fresh payload that the reader is not already seeing (and not aged out).
+  function newStories(data) {
+    const cutoff = Date.now() - BUFFER_HOURS * 3600_000;
+    const out = [];
+    for (const s of data.stories || []) {
+      if (!s || !s.id || state.stories.has(s.id) || state.pending.has(s.id)) continue;
+      const t = tms(s.time);
+      if (t && t < cutoff) continue;
+      out.push(s);
+    }
+    return out;
+  }
+  // Fold the held now-edge arrivals into the live river (only on an explicit pull-to-now).
+  function foldPending() {
+    if (!state.pending.size) return false;
+    const cutoff = Date.now() - BUFFER_HOURS * 3600_000;
+    for (const [id, s] of state.pending) state.stories.set(id, s);
+    for (const [id, r] of state.stories) if (tms(r.time) < cutoff) state.stories.delete(id);
+    if (state.pendingUpdatedAt) state.updatedAt = state.pendingUpdatedAt;
+    state.pending.clear(); state.pendingUpdatedAt = null;
+    return true;
   }
 
   /* ---------- build render entries (mute → filter → zoom → new/old) ---------- */
@@ -882,14 +921,39 @@ ${hosts}
 
   /* ---------- poll / tick ---------- */
 
-  async function tick() {
+  async function tick(opts = {}) {
     if (state.isFetching) return;
     state.isFetching = true;
-    setMark('updating');
     const r = await pull();
     state.isFetching = false;
-    if (r) { state.endpoint = r.endpoint; ingest(r.data); setMark('fresh'); render(); }
-    else { setMark('fresh'); }
+    if (!r) return;                       // network failed → keep last-good silently (stale-but-honest)
+    state.endpoint = r.endpoint;
+    if (r.notModified) return;            // 304 → do nothing: no ingest, no render
+
+    // First paint, or an explicit pull-to-now: fold everything in and render.
+    if (opts.foldNow || !state.firstRendered) {
+      foldPending();
+      ingest(r.data);
+      setMark('fresh');
+      render();
+      return;
+    }
+    // Background poll with genuinely newer data: HOLD it at the now-edge — never reflow the
+    // river under the reader. The #mark signals it; it folds in only on pull-to-now.
+    const fresh = newStories(r.data);
+    if (fresh.length) {
+      for (const s of fresh) state.pending.set(s.id, s);
+      state.pendingUpdatedAt = r.data.updatedAt || state.pendingUpdatedAt;
+      setMark('fresh');
+    }
+  }
+
+  // Pull-to-now (wordmark tap): jump to the top and fold the held arrivals in. A reflow
+  // here is correct — the reader asked for it. Also checks for anything even newer.
+  function pullToNow() {
+    if (foldPending()) { setMark('fresh'); render(); }
+    goToReach(0, true);
+    tick({ foldNow: true });
   }
   function setMark(next) {
     const el = $('mark'); if (!el) return;
