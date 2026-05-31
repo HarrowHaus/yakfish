@@ -89,7 +89,10 @@ Honors the no-telemetry line.
   (verified live) + direct RSS + Google News RSS booster, broadcast once per build.
 - **Follow → CUT** (profile/personalization, against one-surface-for-all).
 - **Save → CUT internally; ROUTED to the OS** reading-list / share sheet (egress).
-- **Granularity → altitude, not a dial** (density ↔ items ↔ echoes, continuous, time-anchored).
+- **Granularity → items ↔ echoes only** (revised 2026-05-31): the density/"shape-of-the-day"
+  stratum was built then **CUT as chrome**. The river is items; the dive is echoes; no zoom
+  axis; pinch unbound. Save/Follow lines above predate later revisions — Follow stays cut,
+  **Save is RETAINED as a directional mark** (see DECISIONS 2026-05-31).
 - **Mobile command surface → MOVE + MARK** (marking-menu + feedforward, *no text field* as
   primary; typing survives only as the free-text filter, which is content not a label).
 - **Aggregation at launch → echo-fold** (URL + conservative near-title dedup); semantic
@@ -99,6 +102,8 @@ Honors the no-telemetry line.
   positive filter cover source dominance. No manual mute.
 - **First-run text hint → CUT for now** (decided 2026-05-30): feedforward carries all
   self-revelation; every surviving verb previews. Revisit only if testing finds one unlearnable.
+- **Density / altitude stratum → CUT** (2026-05-31): chrome; a rhythm chart doesn't serve
+  catching up. The SDAZ speed→altitude tuning question is therefore **moot** (no altitude axis).
 
 **Genuinely OPEN (narrow):**
 1. **Manual mark-seen/unseen — needed, or is crossing-only enough?** Minor; default to
@@ -106,5 +111,6 @@ Honors the no-telemetry line.
 2. **Near-dup title threshold (echo-fold).** SimHash/MinHash cutoff, biased to *under*-merge —
    empirical tune on real DOC+RSS data. Genuine engineering tunable; fail-safe (under-merging
    just shows a few dupes, never wrong-merges).
-3. **SDAZ speed→altitude coupling curve.** Tune the velocity→zoom constants (start from
-   Cockburn & Savage). The one piece of real interaction tuning; do it on-device.
+3. **Should "pull back" ever do anything?** Only candidate that could earn it: compress
+   headlines to scan more per screen (still real headlines). Build only if scanning volume
+   proves a real pain — not by default. Pinch stays unbound until then.

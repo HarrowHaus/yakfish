@@ -245,25 +245,22 @@ A **single line through time**. One axis (time), one item per thing (echoes fold
 newest at one end, a floor (the tide = caught up) at the other. The atomic unit is **the
 item** (one deduped thing). Nothing on the surface ranks; order is time alone.
 
-### Granularity = altitude (continuous), not a dial
-Three natural strata, revealed by *distance*, time always the landmark:
-- **density** (pulled back) — items too small to read; the rhythm/shape of news over time;
-- **items** (reading distance) — one line per thing: headline · time · host;
-- **echoes** (dived in) — one item's sources, each a door out; multiplicity lives only here.
-Self-similar law: *approach a unit → it reveals its constituents; withdraw → they form a
-shape.* Altitude reveals the density the item aggregates into; the dive reveals the echoes
-it resolves into. Continuous and spatial — never a mode toggle. This is what avoids the
-disorientation that retired the old zoom dial: one stratum at a time, chosen by distance.
+### Granularity = items ↔ echoes only (density cut as chrome, 2026-05-31)
+Two levels, not three. The density / "shape-of-the-day" stratum was built (R3) and **cut** —
+it was chrome (a rhythm chart doesn't help you catch up, and it abstracts the headlines into
+unreadable marks). See `DECISIONS.md` 2026-05-31.
+- **items** — the river: one line per thing (headline · time · host). The only river view.
+- **echoes** — the dive: one story's sources, each a door out. Reached by tap/long-press;
+  orthogonal to any zoom axis.
+Self-similar law (now two-level): *approach a story → it reveals its sources (the dive);
+the river is the macro of stories.* No "pull back" stratum. Pinch is unbound.
 
 ### Two primitives: MOVE and MARK
 **MOVE (navigation)**
 - **Pan** — travel along time; bounded by the floor (caught up) and now. Not infinite scroll;
   edges are *felt* (rubber-band + the tide line) to make finishability tactile.
-- **Altitude** — density ↔ items ↔ echoes, reached two ways: implicitly by **speed**
-  (the SDAZ coupling: flick fast → rise to density + travel far; slow-drag → descend to
-  readable) and explicitly by **pinch** (out → detail, in → shape). The phone's native
-  pinch finally does what it's for.
-- **Dive** — descend into one item; its echoes fan out as doors.
+- **Dive** — descend into one item; its echoes fan out as doors. (No altitude/zoom axis —
+  density was cut as chrome; pinch is unbound.)
 
 **MARK (commands)** — press an object → it previews its directional consequences as
 **feedforward** → flick to commit.
@@ -292,8 +289,8 @@ motion language** — feedforward adds *no new chrome*; it is the surface deform
 No radial floats free in space. The pressed item/host/time **deforms**, and its own zones
 become the directional targets. The command surface has no independent existence — it lives
 inside the object, which is what keeps it collapsed into the superfunction rather than bolted
-beside it. One gesture grammar (press → preview → flick) holds at every altitude: a dense
-moment (macro), an item (mid), an echo (micro). Direction = command; distance = depth.
+beside it. One gesture grammar (press → preview → flick) holds at both levels: an item (the
+river) and an echo (the dive). Direction = command; a press-in = dive.
 
 ### Text earns its place — the law
 Allowed when it **is the content**: the headline (news), the one free-text filter string

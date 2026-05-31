@@ -189,20 +189,28 @@ The river is **a single line through time**: one axis (time), one item per thing
 folded), newest at one end, a floor (the tide = caught up) at the other. That is the whole
 macro form. Everything else is approach and exit.
 
-### Granularity = altitude, not a dial (SUPERSEDES the article⊂event⊂thread zoom-rung model)
-The earlier "zoom layers = GDELT containment (article ⊂ event ⊂ thread)" multi-rung model is
-**retired as a user-facing structure** (the dial was already cut for disorientation; the
-multi-rung concept goes with it). Granularity is now **a continuous function of altitude**,
-time always the landmark, three natural strata revealed by distance:
-- **pull back → density** — items too small to read; the *shape* of news over time (rhythm);
-- **reading distance → items** — one line per thing (headline, time, host);
-- **dive in → echoes** — one item's sources, each a door out; multiplicity lives only here.
-One pattern at every scale: *approach a unit → it reveals its constituents; withdraw → they
-form a shape.* One primitive (the item); altitude reveals the density it aggregates into; the
-dive reveals the echoes it resolves into. Continuous, spatial, time-anchored — never a mode
-toggle (this is why it won't disorient where the dial did: one stratum at a time, chosen by
-distance, time constant). The event→sources containment survives *as the dive*; the
-constructed "thread" level is deferred indefinitely.
+### Granularity = items ↔ echoes only — the density "macro" stratum is CUT as chrome (revised 2026-05-31)
+**Correction.** An earlier same-week lock proposed a three-stratum altitude axis
+(density ↔ items ↔ echoes). The **density / "shape-of-the-day"** stratum was built (R3,
+commit c6e02db) and **cut** — it is chrome. It failed the only test that matters: *what does
+a person DO with the shape of the day?* Nothing. You catch up by reading headlines and leaving
+for the ones that matter; a rhythm chart of when stories were filed doesn't serve that, and it
+abstracts the actual content (headlines) into unreadable marks — backwards for a product whose
+whole value is the content. It was elegant-sounding prior art (ZUI/SDAZ, "macro to micro")
+retrofitted as if it served the function. Cut.
+
+Granularity is now **two levels, not three**:
+- **ITEMS** — the river: a single time-ordered line of stories, one line per thing
+  (headline · time · host). The only river view.
+- **ECHOES** — the dive: one story resolved into its sources, each a door out. Reached by
+  tap/long-press on an item; orthogonal to any zoom axis.
+The macro↔micro relationship that *earns its place* is **story ↔ sources** (the dive does
+something real — it resolves coverage and gives a door out). There is no third "zoom out"
+level above the river. **Pinch is unbound** (don't repurpose it to keep the gesture busy —
+that is how chrome creeps back). The constructed "thread" level remains deferred indefinitely.
+The only "pull back" that could ever earn its place is *compressing headlines to scan more
+per screen* (still real headlines) — and only if scanning volume proves a real pain; not by
+default.
 
 ### Aggregation = echo-fold, not semantic clustering at launch (REFINES "clustering, not URL-dedup")
 Aggregation is **resolution, not comparison.** Launch basis = **fold echoes**: canonical-URL
@@ -254,12 +262,12 @@ Test each verb: *does it serve "become current and leave," or quietly rebuild dw
   "save" hand-off). No follow, no internal save, no mute.
 
 ### All navigation + menus collapse to two primitives: MOVE + MARK (LOCKED)
-Absorbs marking menus (Kurtenbach & Buxton 1991; M3 Gesture Menu 2018), the ZUI/SDAZ
-(Igarashi & Hinckley), and feedforward (Djajadiningrat 2002; Vermeulen 2013) — then expands
-past them.
-- **MOVE (navigation):** pan = travel time (bounded by floor + now); altitude =
-  density↔items↔echoes via *speed* (SDAZ coupling) and *pinch* (explicit); dive = descend into
-  one item's echoes.
+Absorbs marking menus (Kurtenbach & Buxton 1991; M3 Gesture Menu 2018) and feedforward
+(Djajadiningrat 2002; Vermeulen 2013) — then expands past them. (The ZUI/SDAZ altitude idea
+was explored and **cut** — see the granularity correction above; only pan + dive remain.)
+- **MOVE (navigation):** pan = travel time (bounded by floor + now); dive = descend into one
+  item's echoes (its sources). No altitude/zoom axis — density was cut as chrome; pinch is
+  unbound.
 - **MARK (commands):** press an object → it previews its directional consequences as
   **feedforward, never text** → flick to commit. **Tap = open** (egress, the dominant act,
   simplest gesture). Item: hold = dive; radial fan = rare verbs (filter-to-this, mark-seen,
@@ -270,10 +278,10 @@ past them.
   2. **The object is the menu** — nothing floats in space; the item/host/time deforms and its
      own zones are the targets. The command surface has no independent existence (collapsed
      into the superfunction).
-  3. **One gesture grammar at every altitude** — press→preview→flick works on a dense moment
-     (macro), an item (mid), an echo (micro); the interaction is as self-similar as the river.
-     Direction = command (mark); distance = depth (dive/altitude); one gesture family — flick
-     out to command, press in to descend.
+  3. **One gesture grammar at both levels** — press→preview→flick works on an item (the river)
+     and on an echo (the dive); the interaction is self-similar across story↔sources.
+     Direction = command (mark); a press-in = descend (dive). One gesture family — flick out to
+     command, press in to dive.
 
 ### Text earns its place — the law (LOCKED)
 **Text is allowed when it IS the content; never when it NAMES a control.** Earns it: the

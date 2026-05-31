@@ -281,8 +281,8 @@ A pass over the actual repo (`public/app.js` v15, `lib/build-news.js`, `scripts/
 ### Contradicts the locks — MODIFY
 | Locked decision | Where it lives now | Action |
 |---|---|---|
-| Granularity = **density ↔ items ↔ echoes (altitude)** | `ZOOMS=['raw','stories','threads']` + pinch/`reachableZooms`/`applyZoom`/`buildEntries` raw branch + typed `zoom` cmd | Replace the raw/stories/threads rungs with altitude strata; keep `stories`=items (default) and the dive=echoes; **add** the pulled-back **density** view; remove `raw`+`threads` and the typed `zoom` command |
-| **Save → cut, route to OS** | `savedSet`/`toggleSave`/`persistSaved`/`is-saved`/`@saved`/`'s'` key/long-press-save | Remove all; long-press → **dive**; add OS share (`navigator.share` / reading-list) as the only "save" |
+| Granularity = **items ↔ echoes only** (density CUT as chrome, 2026-05-31) | old `ZOOMS` dial removed in R3; density view built (c6e02db) then cut | River = items (the only view); echoes = the dive; **no zoom axis**; pinch unbound. Density removed as decorative |
+| **Save → RETAINED as a directional mark** (2026-05-31) + share | done in R2/9330fc2/a8edc09: long-press=dive, swipe-left=save, swipe-right=share | Interim two-direction form; R4 makes them feedforward marks in the fan |
 | **MOVE + MARK + feedforward** (no text labels) | not present; commands are typed (`-@`, `zoom`) + long-press | New interaction layer: press→feedforward-fan→flick; tap=open; the typed command field survives only as free-text filter |
 | **Static-only** (Pages) | `api/news.js`, `netlify/functions/news.mjs`, `vercel.json`, `netlify.toml`, `ENDPOINTS` multi-host | Retire the serverless dual-path; `ENDPOINTS` → static only |
 | **Refresh = conditional GET + calm edge-hold** | `tick()` blind 60 s + `no-store` + `?t=` buster | Conditional GET (ETag/304), ~2–5 min cadence, hold new at the now-edge via `#mark` (never reflow) |
@@ -319,24 +319,27 @@ feel). `sonnet` for **R1, R2, R5** (mechanical).
 > `is-saved` (and any `is-muting`) styles from `public/styles.css`. Obey `CLAUDE.md`. Commit via `committer` and report: "R2 done — save removed,
 > long-press dives, share routes to OS."
 
-## PASTE ↓ — Phase R3 · Granularity = altitude (density ↔ items ↔ echoes)  (model: opusplan)
+## Phase R3 · Granularity = items ↔ echoes only  (model: opusplan) — DONE + CORRECTED
 
-> Read `CLAUDE.md`, `DESIGN.md` + `DECISIONS.md` (2026-05-30 granularity lock), `PRODUCT.md`
-> (superfunction). Proceed with Phase R3. Replace the `raw/stories/threads` zoom in `public/app.js`
-> with the locked **altitude** model: `stories` stays as the **items** stratum (default); the **dive**
-> stays as the **echoes** stratum; **add a pulled-back `density` stratum** — items too small to read,
-> showing the shape/rhythm of the window over time (time-anchored, no per-item text). Remove the `raw`
-> and `threads` rungs, the typed `zoom` command in `runCommand`, and the `ZOOMS` triad; reachability
-> becomes density ⇄ items, with echoes via the dive. Altitude is reached by **speed (SDAZ)** and
-> **pinch**, continuous, time always visible as the landmark. Show me the new altitude state model and
-> the density-view layout before wiring gestures. Obey `CLAUDE.md`. Commit via `committer` and report:
-> "R3 done — density/items/echoes by altitude, raw/threads + typed zoom gone."
+> **Status (2026-05-31):** The dial-removal half was correct and kept. The **density stratum
+> was built (c6e02db) then CUT as chrome** — a rhythm chart doesn't serve catching up and it
+> abstracts the headlines into unreadable marks. Corrected end-state: the river has exactly two
+> levels — **items** (the time-ordered headline list, the only river view) and **echoes** (the
+> dive). No altitude/zoom axis; **pinch is unbound**. The correction prompt that was run:
+>
+> "Remove the DENSITY stratum entirely — decorative, doesn't serve catching up. Keep the
+> removal of the old raw/threads/ZOOMS dial + typed zoom (correct). River = ITEMS + ECHOES
+> (dive) only. Delete `renderDensity`, density marks, the density branch, and
+> `altitude`/`toDensity`/snap logic. Pinch unbound (remove pinch→altitude). Remove `+`/`-`,
+> double-click, Ctrl-wheel, `#alt=` altitude bindings. Items renders as before density; dive,
+> save/share swipes, long-press=dive, context-menu block, removed mute all stay. Report:
+> 'density removed — river is items + dive only, no altitude axis, pinch unbound.'"
 
 ## PASTE ↓ — Phase R4 · MOVE + MARK with feedforward (the command surface)  (model: opusplan)
 
 > Read `CLAUDE.md`, `DESIGN.md` (2026-05-30 MOVE+MARK + feedforward), `DECISIONS.md`,
 > `reference/gesture-sourcebook.md`. Proceed with Phase R4. Build the two-primitive surface:
-> **MOVE** = pan (time) + altitude (R3) + dive; **MARK** = press an object → it previews its
+> **MOVE** = pan (time) + dive (no altitude axis — density was cut); **MARK** = press an object → it previews its
 > directional consequences as **feedforward (never text labels)** → flick to commit. **Tap = open**
 > (egress). On an item: hold = dive; fan = filter-to-this / mark-seen / share-to-OS. On a host:
 > filter-to-this-source. On the wordmark: free-text filter (the one typed field), jump-to-now /
