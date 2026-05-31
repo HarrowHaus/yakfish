@@ -100,22 +100,33 @@ One element doing the navigation, two parts:
 - a **typing field** — plain text to filter, plus `@source`, `@section`, `@saved`,
   and (paid) **paste a feed URL to add an RSS source** (subscription, filtering, and
   feed-management collapse into this one input — no settings screen);
-- a **zoom dial** that sets your **depth in the story hierarchy** (article ⊂ event ⊂
-  thread, built from GDELT's GKG). This is the **same axis as the dive, entered from the
-  outside**: zooming out adds a layer of structure you then dive *through*; zooming in
-  strips layers away. The river is a horizontal cross-section through one vertical
-  hierarchy at the depth you've set.
-  - **Raw** — a line is one article; tap → straight to source (0 dive layers).
-  - **Stories** (default) — a line is one event; tap → its hosts → source (1 layer).
-  - **Threads** — a line is one ongoing thread; tap → its stories → hosts → source (2 layers).
+- **zoom = the river's aggregation level — and the river is always finishable.** There is
+  one depth axis (`thread ⊃ story ⊃ article ⊃ source`), and it **meets at stories (home).**
+  The river only ever shows *aggregated, finishable* levels; the article level is **not** a
+  river view — it lives in the **dive** (one story at a time, on demand).
+  - **Stories** (default) — a line is one event; tap to **dive** → its hosts/articles → source.
+  - **Threads** (pinch out) — a line is one ongoing situation; reduction *toward* finishability
+    (40 events → one line). Tap → its stories → hosts → source. Neutral machine clustering
+    only (never tone); appears **only when real**.
+  - **No "raw" river level.** Flattening every article into the river is the un-finishable
+    firehose — the literal opposite of the ethos. Cut. (It was a shoehorn: *GDELT has
+    articles, so make a rung.* The ethos says no.)
 
-  **A level exists only when it changes the view.** If dedup merges nothing, the dial does
-  not offer "stories" as distinct from "raw"; if there are no multi-story threads, the
-  thread stop disappears. There is never an empty cluster layer. Zooming out is a **felt
-  merge** — lines visibly collapse into their parent (reduced-motion: instant), so the
-  motion *is* the meaning, not a silent recount. (The full three-level depth blooms once
-  the GKG ingestion feeds real themes; with title-match only it correctly shows ~one
-  usable stop rather than faking depth.) Position legible by a notch; nothing glowing.
+  **The asymmetry is the ethos, made structural:** aggregating *up* (threads) can be a
+  whole-river view — *fewer* lines, still finishable; disaggregating *down* (articles) can
+  **never** be a whole-river view — it is always scoped to one story, via the dive. The
+  structure itself refuses the firehose.
+
+  **One axis, two gestures meeting at stories** — **pinch** governs the finishable river
+  levels (stories <-> threads); **tap/dive** descends into a single story (-> hosts ->
+  source). No dial (cut). Pinch *is* the felt merge (lines collapse into their thread / split
+  back, pinch-centroid line held stable, reduced-motion instant). Desktop parity: `zoom
+  stories|threads` / `+`/`-` / double-click, folded onto the command surface. A depth label
+  surfaces only *during* the gesture and dissolves on release (same as the dim scrub); nothing
+  at rest. **A level exists only when it changes the view** — no multi-story threads -> the
+  thread level isn't reachable (today, title-match only -> the river is just stories, and the
+  pinch has nowhere to go, correctly). Flood-cap overflow stays recoverable **by diving**, not
+  by a raw mode — nothing censored, no firehose.
 
 ## Focus mode = the diff
 
@@ -154,9 +165,8 @@ ethos rather than bolt onto it:
 - **Per-source flood cap — structural anti-domination (decided, in).** Build-side and
   **content-blind**: it counts only *which source*, never what a story is about or how
   "important" it is. It shapes the **deduped-stories default view only** and is
-  **non-destructive** — the overflow reappears as you zoom toward the **raw-headlines**
-  end of the granularity dial, so nothing is censored and the firehose is always one
-  notch away. Mechanically the same move as dedup (both thin the calm default, both
+  **non-destructive** — the overflow is recoverable by **diving** into the affected story
+  (the dive shows every host), so nothing is censored without ever exposing a firehose. Mechanically the same move as dedup (both thin the calm default, both
   undone by zooming to raw), which is why it sits inside the no-editorial law, not
   against it. Exact cap = a build-tuning number (`DESIGN.md`, equal weight).
 
@@ -169,3 +179,36 @@ ethos rather than bolt onto it:
   (via the proxy), larger archive, optional sync via your own store. The intuitive core
   stays free; power features unlock with a key cached in `localStorage`
   (`ARCHITECTURE.md` §7–8).
+
+---
+
+## 2026-05-30 — The superfunction (what yak.fish *is*, reduced)
+
+The one-sentence above still holds as the *mechanism*. This is the *identity* it serves.
+
+**The superfunction is catching up.** RSS, the reader, and link-aggregation are three
+crippled halves of one act: RSS is the *manual* version (you subscribe/manage), the reader
+is the *dwell* version (it keeps you in-app), aggregation is the *collapse* version (many →
+one stream). Strip the labor and the dwell and the meta-form is: **become current with the
+public world, completely, with no setup, then leave for what matters.** yak.fish is that act
+made native — open → move through what's new → leave for the few → reach the end → current.
+One continuous gesture-flow in the hand, not a feature set.
+
+**What it is, by category:** a **public utility** that resolves a live stream of public links
+into one finite, account-free, time-ordered surface you become current with and leave —
+operated as a bounded zoomable timeline by touch. An *index of the public present*, not a
+publication.
+
+**Defined by negation:** not a publication (owns nothing) · not a feed (finite/flat/calm, not
+infinite/ranked/sticky) · not a reader (the doorway, not the room — you read at the source) ·
+not a dashboard (resolution happened before you arrived) · not a news app (news is instance
+one; the same mechanism resolves any public stream).
+
+**Supersedes the older "folded functions" text above (save / mute).** Per `DECISIONS.md` 2026-05-30, the verb set is reduced to **open · dive · filter** (+ share-to-OS hand-off and the automatic tide). **Save** is cut and routed to the OS reading-list/share sheet; **mute** and **follow** are cut. Where earlier sections describe save or source-mute as live folded functions, that is stale — the cuts win.
+
+**The unifying fact — economics = ethics = form.** One computation is built and broadcast
+identically to everyone. That single shared artifact is *why* it is free at any scale (no
+per-user work), *why* it is a public commons (same for all, no profile), and *why* the surface
+is flat and calm (nothing to personalize, rank, or hold you with). The cheap architecture, the
+civic neutrality, and the calm form are one decision seen from three sides — see
+`ARCHITECTURE.md` (broadcast model) and `DECISIONS.md` 2026-05-30.

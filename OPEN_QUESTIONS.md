@@ -36,13 +36,14 @@ Settled with #2.
 The cluster still exists in the data; a pinned-source user may choose to fall straight
 through to their source. Paid-tier polish, not v1.
 
-### 5. Zoom dial → **depth in the GKG story hierarchy** (article ⊂ event ⊂ thread) — the
-same axis as the dive, entered from the outside. Raw (0 dive layers) · Stories (1) ·
-Threads (2). **A level appears only when it changes the view** (no empty cluster layer;
-auto-collapses redundant stops); zooming out is a *felt merge*, not a recount. Full
-three-level depth depends on the GKG ingestion (the raw/GKG track) — until then it shows
-~one usable stop honestly. (`PRODUCT.md`, `DESIGN.md`.) *Decided — supersedes the old
-density-dial framing.*
+### 5. Zoom → **the river's aggregation level**, and **the river is always finishable**, so
+it shows only aggregated levels: **Stories** (default) and **Threads** (pinch out). The
+**article level is not a river view — it lives in the dive** (one story at a time). **"Raw"
+as a river mode is cut** (a whole-river firehose contradicts finishability — the ethos says
+no). One axis meeting at stories: pinch governs stories⇄threads, tap/dive descends a single
+story → hosts → source. Gesture, never a dial. Threads neutral + only when real, fed by the
+GKG ingestion. (`PRODUCT.md`, `ARCHITECTURE.md` §3a.) *Decided — supersedes the raw/stories/
+threads three-rung framing; raw is substrate, not a view.*
 
 ### 6. `--dim` control → **no persistent bar; folded onto the wordmark; automatic is the
 resting state.** The page background *is* the dim state, so the v14 chromatic bar and the
@@ -78,3 +79,32 @@ Honors the no-telemetry line.
 - Secure handles: GitHub org, X, Instagram (brand as yak.fish / Yakfish, never bare "Yak").
 - Free knockout search on "Yakfish" — USPTO (TESS) + EUIPO — in classes 9/38/41/42.
 - Pay an attorney for clearance only on the finalist(s) if/when you scale.
+
+---
+
+## 2026-05-30 — Resolved this pass, and the narrow forks left
+
+**Now RESOLVED (build to these; see `DECISIONS.md` / `DESIGN.md` 2026-05-30):**
+- **Sourcing viability gate → CLOSED.** Free, current, worldwide via GDELT DOC API
+  (verified live) + direct RSS + Google News RSS booster, broadcast once per build.
+- **Follow → CUT** (profile/personalization, against one-surface-for-all).
+- **Save → CUT internally; ROUTED to the OS** reading-list / share sheet (egress).
+- **Granularity → altitude, not a dial** (density ↔ items ↔ echoes, continuous, time-anchored).
+- **Mobile command surface → MOVE + MARK** (marking-menu + feedforward, *no text field* as
+  primary; typing survives only as the free-text filter, which is content not a label).
+- **Aggregation at launch → echo-fold** (URL + conservative near-title dedup); semantic
+  clustering deferred to the paid GKG layer.
+
+- **Mute → CUT** (decided 2026-05-30): folded away; the automatic per-source flood-cap +
+  positive filter cover source dominance. No manual mute.
+- **First-run text hint → CUT for now** (decided 2026-05-30): feedforward carries all
+  self-revelation; every surviving verb previews. Revisit only if testing finds one unlearnable.
+
+**Genuinely OPEN (narrow):**
+1. **Manual mark-seen/unseen — needed, or is crossing-only enough?** Minor; default to
+   crossing-only unless a real need appears.
+2. **Near-dup title threshold (echo-fold).** SimHash/MinHash cutoff, biased to *under*-merge —
+   empirical tune on real DOC+RSS data. Genuine engineering tunable; fail-safe (under-merging
+   just shows a few dupes, never wrong-merges).
+3. **SDAZ speed→altitude coupling curve.** Tune the velocity→zoom constants (start from
+   Cockburn & Savage). The one piece of real interaction tuning; do it on-device.

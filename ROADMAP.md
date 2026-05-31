@@ -1,5 +1,7 @@
 # ROADMAP.md — the master build blueprint for yak.fish
 
+> **2026-05-30 supersession.** The interaction/sourcing lock in `DECISIONS.md`/`DESIGN.md` (same date) overrides older items here: granularity is **altitude** (density↔items↔echoes), not a zoom dial; the command surface is **MOVE + MARK** (gesture + feedforward), not a typed command bar; **save → OS**, **mute → cut**, **follow → cut**. Build via the **R1–R5** prompts in `BUILD_PLAN.md`. Where this conflicts with phases below, the lock wins.
+
 The single map for **both** the Relay (you) and the Executor (Claude Code). It says
 what already exists, what changes, and in what order — as phases (each a relay handoff in `BUILD_PLAN.md`) →
 tasks with checkboxes. `BUILD_PLAN.md` holds the exact paste-in prompts; the other

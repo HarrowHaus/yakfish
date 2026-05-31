@@ -261,3 +261,97 @@ Independent; do after the free wire is live.
 Paste me the error or the surprising output verbatim. I adjust the doc or the routing and
 hand you a corrected handoff — you never debug it by hand. The spec is the thing we fix;
 the Executor just re-reads it.
+
+---
+
+## 2026-05-30 — Reconciliation with the locked concept (read before the phases below)
+
+A pass over the actual repo (`public/app.js` v15, `lib/build-news.js`, `scripts/build-static-cache.mjs`,
+`.github/workflows/pages.yml`) shows much of the spine **already exists**. The remaining work is
+*modification to match the 2026-05-30 locks in `DECISIONS.md` / `DESIGN.md`*, not a rebuild.
+
+### Already built — do NOT redo
+- **Broadcast model**: `pages.yml` cron `*/15 * * * *` → `npm run build:cache` → `public/cache/news.json`
+  → Pages CDN. One build, all users read one static file.
+- **Sourcing**: `build-news.js` pulls **GDELT DOC 2.0** (query pipes, `docs/GDELT_QUERIES.md`) + RSS,
+  canonical-URL dedup, flood-cap 12/source, 26 h window, 600-story cap.
+- **Auto-refresh**: `app.js` `tick()` polls and swaps in place, no reload (`docs/LIVE_AUTO_PULL.md`).
+- **River / dive / dim / wordmark / filter / reach-pager / keyboard parity**: all present in `app.js` v15.
+
+### Contradicts the locks — MODIFY
+| Locked decision | Where it lives now | Action |
+|---|---|---|
+| Granularity = **density ↔ items ↔ echoes (altitude)** | `ZOOMS=['raw','stories','threads']` + pinch/`reachableZooms`/`applyZoom`/`buildEntries` raw branch + typed `zoom` cmd | Replace the raw/stories/threads rungs with altitude strata; keep `stories`=items (default) and the dive=echoes; **add** the pulled-back **density** view; remove `raw`+`threads` and the typed `zoom` command |
+| **Save → cut, route to OS** | `savedSet`/`toggleSave`/`persistSaved`/`is-saved`/`@saved`/`'s'` key/long-press-save | Remove all; long-press → **dive**; add OS share (`navigator.share` / reading-list) as the only "save" |
+| **MOVE + MARK + feedforward** (no text labels) | not present; commands are typed (`-@`, `zoom`) + long-press | New interaction layer: press→feedforward-fan→flick; tap=open; the typed command field survives only as free-text filter |
+| **Static-only** (Pages) | `api/news.js`, `netlify/functions/news.mjs`, `vercel.json`, `netlify.toml`, `ENDPOINTS` multi-host | Retire the serverless dual-path; `ENDPOINTS` → static only |
+| **Refresh = conditional GET + calm edge-hold** | `tick()` blind 60 s + `no-store` + `?t=` buster | Conditional GET (ETag/304), ~2–5 min cadence, hold new at the now-edge via `#mark` (never reflow) |
+
+### Model routing for the new phases
+`opusplan` for **R3** (granularity rewrite — reasoning changes the outcome) and **R4** (MOVE+MARK
+feel). `sonnet` for **R1, R2, R5** (mechanical).
+
+---
+
+## PASTE ↓ — Phase R1 · Refresh: conditional GET + calm edge-hold  (model: sonnet)
+
+> Read `CLAUDE.md`, `ARCHITECTURE.md` (2026-05-30 auto-refresh section), and `docs/LIVE_AUTO_PULL.md`.
+> Proceed with Phase R1. In `public/app.js`: change `tryFetch`/`pull`/`tick` to a **conditional GET**
+> — remove `cache:'no-store'` and the `?t=Date.now()` buster, store the response `ETag`/`Last-Modified`,
+> send `If-None-Match`/`If-Modified-Since`, and on **304** do nothing (no ingest, no render). Raise
+> `POLL_MS` to 180_000. When a 200 brings genuinely newer data, **do not reflow the river**: mark new
+> arrivals at the now-edge using the existing `#mark` element + `setMark('fresh')`, and only fold them
+> in when the reader pulls to now (wordmark tap → `goToReach(0)`). Obey every NEVER/ALWAYS in `CLAUDE.md`.
+> Commit via `committer` and report: "R1 done — 304s on unchanged, new held at edge, no reflow."
+
+## PASTE ↓ — Phase R2 · Verb reduction: cut save (route to OS), long-press → dive  (model: sonnet)
+
+> Read `CLAUDE.md`, `DECISIONS.md` (2026-05-30 verbs), `DESIGN.md` (2026-05-30 interaction lock).
+> Proceed with Phase R2. In `public/app.js` remove all **save** machinery: `savedSet`, `toggleSave`,
+> `persistSaved`, the `@saved` filter branch in `matchesFilter`, the `'s'` keyboard handler, the
+> `is-saved` class in `renderEntry`, and the long-press-save branch. Repoint **long-press → dive**
+> (the hosts/echoes panel). Add an OS hand-off as the only "save": `navigator.share(...)` where
+> available, else copy-link, invoked from the item's mark fan (label per `DESIGN.md` — gesture, not a
+> text button). **Also remove mute** (cut, 2026-05-30): delete `mutedSet`, `toggleMute`,
+> `persistMuted`, the mute branch in `storyVisibleSources`, the `-@source` branch in `runCommand`,
+> the long-press-host mute, and any `is-muting` handling. **Leave the automatic flood-cap in
+> `lib/build-news.js` untouched** — that, plus positive filter, covers source dominance. Remove
+> `is-saved` (and any `is-muting`) styles from `public/styles.css`. Obey `CLAUDE.md`. Commit via `committer` and report: "R2 done — save removed,
+> long-press dives, share routes to OS."
+
+## PASTE ↓ — Phase R3 · Granularity = altitude (density ↔ items ↔ echoes)  (model: opusplan)
+
+> Read `CLAUDE.md`, `DESIGN.md` + `DECISIONS.md` (2026-05-30 granularity lock), `PRODUCT.md`
+> (superfunction). Proceed with Phase R3. Replace the `raw/stories/threads` zoom in `public/app.js`
+> with the locked **altitude** model: `stories` stays as the **items** stratum (default); the **dive**
+> stays as the **echoes** stratum; **add a pulled-back `density` stratum** — items too small to read,
+> showing the shape/rhythm of the window over time (time-anchored, no per-item text). Remove the `raw`
+> and `threads` rungs, the typed `zoom` command in `runCommand`, and the `ZOOMS` triad; reachability
+> becomes density ⇄ items, with echoes via the dive. Altitude is reached by **speed (SDAZ)** and
+> **pinch**, continuous, time always visible as the landmark. Show me the new altitude state model and
+> the density-view layout before wiring gestures. Obey `CLAUDE.md`. Commit via `committer` and report:
+> "R3 done — density/items/echoes by altitude, raw/threads + typed zoom gone."
+
+## PASTE ↓ — Phase R4 · MOVE + MARK with feedforward (the command surface)  (model: opusplan)
+
+> Read `CLAUDE.md`, `DESIGN.md` (2026-05-30 MOVE+MARK + feedforward), `DECISIONS.md`,
+> `reference/gesture-sourcebook.md`. Proceed with Phase R4. Build the two-primitive surface:
+> **MOVE** = pan (time) + altitude (R3) + dive; **MARK** = press an object → it previews its
+> directional consequences as **feedforward (never text labels)** → flick to commit. **Tap = open**
+> (egress). On an item: hold = dive; fan = filter-to-this / mark-seen / share-to-OS. On a host:
+> filter-to-this-source. On the wordmark: free-text filter (the one typed field), jump-to-now /
+> jump-to-floor, focus, day-scrub (keep existing). Previews must render in the existing `--signal`
+> accent + motion (no new chrome); the fan lives **on the object** (no floating menu). Honor
+> `prefers-reduced-motion`. Show me the feedforward preview list (verb → on-surface consequence) and
+> the press→preview→flick state machine before full wiring. Obey `CLAUDE.md`. Commit via `committer`
+> and report: "R4 done — tap opens, press previews + flicks, no text labels, fan on the object."
+
+## PASTE ↓ — Phase R5 · Retire the serverless dual-path (static-only)  (model: sonnet)
+
+> Read `CLAUDE.md`, `DECISIONS.md` ("Deploy: Cloudflare Pages" + static-broadcast). Proceed with
+> Phase R5. Remove the per-request serverless path now that the build is static: delete
+> `api/news.js`, `netlify/functions/news.mjs`, and the `vercel.json` / `netlify.toml` news wiring;
+> reduce `ENDPOINTS` in `public/app.js` to the static files only (`cache/latest.json`,
+> `cache/news.json`). Confirm `npm run build:cache` + `pages.yml` remain the sole data path. Do not
+> touch sourcing logic in `lib/build-news.js`. Obey `CLAUDE.md`. Commit via `committer` and report:
+> "R5 done — serverless removed, static-only data path green."

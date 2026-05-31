@@ -231,3 +231,79 @@ open onto the **new/old line** — the seen/unseen boundary — and **gesture do
 traverse the new toward it; the line is the floor, so the river is finishable and the
 caught-up state is often empty. The articles — and the few earned controls — are the
 whole design.
+
+---
+
+## 2026-05-30 — Interaction model LOCK: the river basis, granularity, MOVE + MARK
+
+This section is the authoritative interaction form. It supersedes earlier scattered
+references to a *save* state/gesture and to a multi-rung zoom (see `DECISIONS.md`
+2026-05-30 lock). Where this conflicts with text above, this wins.
+
+### The river — simple basis
+A **single line through time**. One axis (time), one item per thing (echoes folded),
+newest at one end, a floor (the tide = caught up) at the other. The atomic unit is **the
+item** (one deduped thing). Nothing on the surface ranks; order is time alone.
+
+### Granularity = altitude (continuous), not a dial
+Three natural strata, revealed by *distance*, time always the landmark:
+- **density** (pulled back) — items too small to read; the rhythm/shape of news over time;
+- **items** (reading distance) — one line per thing: headline · time · host;
+- **echoes** (dived in) — one item's sources, each a door out; multiplicity lives only here.
+Self-similar law: *approach a unit → it reveals its constituents; withdraw → they form a
+shape.* Altitude reveals the density the item aggregates into; the dive reveals the echoes
+it resolves into. Continuous and spatial — never a mode toggle. This is what avoids the
+disorientation that retired the old zoom dial: one stratum at a time, chosen by distance.
+
+### Two primitives: MOVE and MARK
+**MOVE (navigation)**
+- **Pan** — travel along time; bounded by the floor (caught up) and now. Not infinite scroll;
+  edges are *felt* (rubber-band + the tide line) to make finishability tactile.
+- **Altitude** — density ↔ items ↔ echoes, reached two ways: implicitly by **speed**
+  (the SDAZ coupling: flick fast → rise to density + travel far; slow-drag → descend to
+  readable) and explicitly by **pinch** (out → detail, in → shape). The phone's native
+  pinch finally does what it's for.
+- **Dive** — descend into one item; its echoes fan out as doors.
+
+**MARK (commands)** — press an object → it previews its directional consequences as
+**feedforward** → flick to commit.
+- **Tap = open** — the dominant act (egress) gets the simplest gesture.
+- **Item**: hold = dive; a radial fan covers the rare verbs (filter-to-this, mark-seen,
+  share-to-OS).
+- **Host**: source-scoped mark — filter-to-this-source. (Manual mute is **cut**; source
+  dominance is handled by the automatic flood-cap + positive filter.)
+- **Wordmark (home nucleus)**: global marks — free-text filter (the one place typing earns
+  its place), jump-to-now / jump-to-floor, focus mode, day-scrub (drag wordmark horizontally;
+  retained from the dim system).
+
+### Feedforward, not labels (self-revelation without text)
+The fan never shows words; it shows the **consequence beginning** as you pull toward a
+direction (Djajadiningrat 2002; Vermeulen 2013 — trigger → preview → exit):
+- pull toward **open** → the host lifts, the door cracks;
+- toward **filter-to-this** → the rest of the river dims away, leaving what would remain;
+- toward **mark-seen** → the line settles to the seen tint and the tide advances;
+- toward **share** → the OS share/reading-list sheet lifts in (the "save" hand-off).
+Release commits; pull back / lift-outside cancels. The novice's slow pull is the same motion
+as the expert's fast flick (rehearsal). Previews render in the **existing `--accent` and
+motion language** — feedforward adds *no new chrome*; it is the surface deforming.
+
+### The object is the menu
+No radial floats free in space. The pressed item/host/time **deforms**, and its own zones
+become the directional targets. The command surface has no independent existence — it lives
+inside the object, which is what keeps it collapsed into the superfunction rather than bolted
+beside it. One gesture grammar (press → preview → flick) holds at every altitude: a dense
+moment (macro), an item (mid), an echo (micro). Direction = command; distance = depth.
+
+### Text earns its place — the law
+Allowed when it **is the content**: the headline (news), the one free-text filter string
+(the user's own query), the time/host (data). Disallowed as a **control label**
+(Save/Mute/Follow/Filter as words) — those become gesture + feedforward. **No first-run text
+hint for now**: feedforward carries all self-revelation, and every surviving verb (open, dive,
+filter, mark-seen, share) previews on the surface. Revisit only if a verb proves unlearnable by
+preview alone.
+
+### Consequences for the existing DOM/state
+- **`is-saved` state is retired** from the surface; "save" routes to the OS reading-list /
+  share sheet (egress), not an internal collection. `is-read` (the tide) is the only
+  intrinsic item state and is mostly set automatically by crossing.
+- Headline state now shows **read** only (via tint/position); there is no saved tint.

@@ -158,3 +158,127 @@ creates its own frame rather than describing the product (not "news/wire/calm"),
 which are surface words. Brand consistently as **yak.fish / Yakfish**, never bare
 "Yak" (which brushes Yik Yak). This is the meta-art stance: absorb prior art as
 material; don't name yourself after the category.
+
+---
+
+## 2026-05-30 — Interaction & sourcing LOCK (supersedes/refines the zoom-rung, clustering, save, and "GDELT raw files" entries above)
+
+A full conceptual pass reduced the product to its irreducible form. Where this entry
+conflicts with an earlier one, **this entry wins**; the earlier reasoning is retained
+above for lineage.
+
+### What yak.fish is — the superfunction
+RSS, the reader, and link-aggregation are three crippled halves of one act: **catching up.**
+RSS = the *manual* version (you subscribe/manage); the reader = the *dwell* version (keeps
+you in-app); aggregation = the *collapse* version (many → one stream). Strip the labor and
+the dwell and the meta-form is: *become current with the public world, completely, with no
+setup, then leave for what matters.* yak.fish is that catch-up function made native — not a
+reader, not RSS, not an aggregator. It is a **public utility that resolves a live stream of
+public links into one finite, account-free, time-ordered surface you become current with and
+leave**, operated as a bounded zoomable timeline by touch.
+Negation set: not a publication (owns nothing), not a feed (finite/flat/calm vs
+infinite/ranked/sticky), not a reader (the doorway, not the room), not a dashboard
+(resolution happened before you arrived), not a news app (news is instance one).
+Unifying fact: **economics = ethics = form are one fact** — one computation broadcast
+identically to everyone is *why* it is free at scale (no per-user work), *why* it is a public
+commons (same for all, no profile), and *why* the surface is flat/calm (nothing to
+personalize or rank).
+
+### The river — simple basis (LOCKED)
+The river is **a single line through time**: one axis (time), one item per thing (echoes
+folded), newest at one end, a floor (the tide = caught up) at the other. That is the whole
+macro form. Everything else is approach and exit.
+
+### Granularity = altitude, not a dial (SUPERSEDES the article⊂event⊂thread zoom-rung model)
+The earlier "zoom layers = GDELT containment (article ⊂ event ⊂ thread)" multi-rung model is
+**retired as a user-facing structure** (the dial was already cut for disorientation; the
+multi-rung concept goes with it). Granularity is now **a continuous function of altitude**,
+time always the landmark, three natural strata revealed by distance:
+- **pull back → density** — items too small to read; the *shape* of news over time (rhythm);
+- **reading distance → items** — one line per thing (headline, time, host);
+- **dive in → echoes** — one item's sources, each a door out; multiplicity lives only here.
+One pattern at every scale: *approach a unit → it reveals its constituents; withdraw → they
+form a shape.* One primitive (the item); altitude reveals the density it aggregates into; the
+dive reveals the echoes it resolves into. Continuous, spatial, time-anchored — never a mode
+toggle (this is why it won't disorient where the dial did: one stratum at a time, chosen by
+distance, time constant). The event→sources containment survives *as the dive*; the
+constructed "thread" level is deferred indefinitely.
+
+### Aggregation = echo-fold, not semantic clustering at launch (REFINES "clustering, not URL-dedup")
+Aggregation is **resolution, not comparison.** Launch basis = **fold echoes**: canonical-URL
+dedup (param-strip + rel=canonical/AMP) + conservative near-identical-title match
+(SimHash/MinHash, biased to *under*-merge). Kills wire-syndication repeats cheaply and
+deterministically — no embeddings, no topic model, no state machine. Multiplicity survives
+only as a whisper ("also at …") on the **dive**, never as surface comparison/magnitude chrome.
+Full cross-source semantic clustering ("same event, different words") is **not** done at
+launch; it needs the GDELT GKG/Events layer and is a later, optional power-feature.
+Accepted consequence: `multiSourceCount`/host-count may be ~1 for many items at launch; the
+dive simply has fewer doors until the GKG layer lands. **This does not block ship.**
+
+### Sourcing — free, current, worldwide, VERIFIED LIVE (REFINES "GDELT via raw files, not the query API")
+Re-verified 2026-05-30: the **GDELT DOC 2.0 API** (`api.gdeltproject.org/api/v2/doc/doc`) is
+**live and free** — it returned its own throttle notice (HTTP 429, "limit requests to one
+every 5 seconds," with maintainer contact). The connection-timeout 503s observed are
+caller/proxy artifacts of hitting it too fast, **not** an outage. Operating constraint:
+**~1 request / 5 s / IP** — irrelevant in the broadcast model (one query per build serves all
+users).
+The earlier "use raw files, not the query API" decision is **refined, not reversed**:
+- **Launch sourcing = the FREE layer:** GDELT DOC API (global/multilingual breadth, queried
+  once per build) + **direct-publisher RSS** (always-on, dependency-free floor) + Google News
+  RSS (booster only; subject to the field-discipline caveat). Dedupe by URL.
+- **Raw 15-min files + GKG/BigQuery = the later PAID power-layer** (entity/theme facets, true
+  cross-source clustering) — added only if justified (~$20–150/mo + data-ops). Not required
+  to ship.
+Net: launch is genuinely free, worldwide, and current — the sourcing gate is closed.
+Honest residuals: DOC machine-coding noise (we ignore tone/CAMEO), Google News RSS unofficial
+(booster only), no single free source is 100% complete.
+
+### Verbs reduced to the irreducible set (SUPERSEDES "the save gesture … stays")
+Test each verb: *does it serve "become current and leave," or quietly rebuild dwell/profile?*
+- **Follow — CUT.** Persistent per-user subscription = personalization/profile; against
+  one-surface-for-all.
+- **Save — CUT as an internal feature; ROUTED TO THE OS.** A keep-pile points back into the
+  app (dwell), against egress. The real need (scan now / read later) is handed to the
+  platform's reading-list / share sheet: "save" becomes "leave into your OS reading list."
+  yak.fish owns no collection; stateless beyond the tide. (Supersedes the earlier "save
+  gesture … stays.")
+- **Mute — CUT** (decided 2026-05-30, same day). The automatic per-source **flood-cap**
+  (`FLOOD_CAP_PER_SOURCE`, structural and identical for everyone) already handles one source
+  dominating; manual mute was a personal, persistent, subtractive override — state pointing back
+  into the app, against one-surface-for-all. Source dominance is handled by the flood-cap +
+  positive filter; there is no manual mute.
+- **Survivors — the irreducible command set: `open · dive · filter`.** Intrinsic state = **the
+  tide (seen/unseen)** only, mostly automatic (crossing marks seen). Plus **share-to-OS** (the
+  "save" hand-off). No follow, no internal save, no mute.
+
+### All navigation + menus collapse to two primitives: MOVE + MARK (LOCKED)
+Absorbs marking menus (Kurtenbach & Buxton 1991; M3 Gesture Menu 2018), the ZUI/SDAZ
+(Igarashi & Hinckley), and feedforward (Djajadiningrat 2002; Vermeulen 2013) — then expands
+past them.
+- **MOVE (navigation):** pan = travel time (bounded by floor + now); altitude =
+  density↔items↔echoes via *speed* (SDAZ coupling) and *pinch* (explicit); dive = descend into
+  one item's echoes.
+- **MARK (commands):** press an object → it previews its directional consequences as
+  **feedforward, never text** → flick to commit. **Tap = open** (egress, the dominant act,
+  simplest gesture). Item: hold = dive; radial fan = rare verbs (filter-to-this, mark-seen,
+  share-to-OS). Host: source-scoped mark (filter-to-this-source; mute is cut). Wordmark (home
+  nucleus): global marks — free-text filter, jump-to-now / jump-to-floor, focus, day-scrub.
+- **Three expansions past textbook marking menus (absorb + expand, not copy):**
+  1. **Feedforward replaces labels** — the fan shows consequences beginning, not words.
+  2. **The object is the menu** — nothing floats in space; the item/host/time deforms and its
+     own zones are the targets. The command surface has no independent existence (collapsed
+     into the superfunction).
+  3. **One gesture grammar at every altitude** — press→preview→flick works on a dense moment
+     (macro), an item (mid), an echo (micro); the interaction is as self-similar as the river.
+     Direction = command (mark); distance = depth (dive/altitude); one gesture family — flick
+     out to command, press in to descend.
+
+### Text earns its place — the law (LOCKED)
+**Text is allowed when it IS the content; never when it NAMES a control.** Earns it: the
+headline (the news), the one free-text filter string (the user's own query), the time/host
+(data). Fails: "Save/Mute/Follow/Filter" as labels — replaced by gesture + feedforward.
+Novice self-revelation is **feedforward** (preview the consequence), not text labels.
+**No first-run text hint for now** (decided 2026-05-30, same day): feedforward carries *all*
+self-revelation. Every surviving verb (open, dive, filter, mark-seen, share) has a previewable
+on-surface consequence, so no function-word is needed. Revisit only if testing finds a verb
+genuinely unlearnable by preview alone.
