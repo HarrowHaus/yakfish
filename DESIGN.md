@@ -269,7 +269,8 @@ disorientation that retired the old zoom dial: one stratum at a time, chosen by 
 **feedforward** → flick to commit.
 - **Tap = open** — the dominant act (egress) gets the simplest gesture.
 - **Item**: hold = dive; a radial fan covers the rare verbs (filter-to-this, mark-seen,
-  share-to-OS).
+  **save** (local/localStorage), **share-to-OS** (egress)). Save and share are the two
+  outbound marks — gesture, not text buttons.
 - **Host**: source-scoped mark — filter-to-this-source. (Manual mute is **cut**; source
   dominance is handled by the automatic flood-cap + positive filter.)
 - **Wordmark (home nucleus)**: global marks — free-text filter (the one place typing earns

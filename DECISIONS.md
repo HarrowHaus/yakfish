@@ -237,11 +237,13 @@ Honest residuals: DOC machine-coding noise (we ignore tone/CAMEO), Google News R
 Test each verb: *does it serve "become current and leave," or quietly rebuild dwell/profile?*
 - **Follow — CUT.** Persistent per-user subscription = personalization/profile; against
   one-surface-for-all.
-- **Save — CUT as an internal feature; ROUTED TO THE OS.** A keep-pile points back into the
-  app (dwell), against egress. The real need (scan now / read later) is handed to the
-  platform's reading-list / share sheet: "save" becomes "leave into your OS reading list."
-  yak.fish owns no collection; stateless beyond the tide. (Supersedes the earlier "save
-  gesture … stays.")
+- **Save — RETAINED as a directional mark gesture** (revised 2026-05-31). Save is a
+  directional mark in the item's fan, alongside share-to-OS — gesture not a text button,
+  `localStorage`-local, no server state, no keep-pile on our servers. The fan has two
+  outbound marks: **save** (local, persistent across sessions) and **share** (OS hand-off,
+  egress). Long-press is repointed to dive; save is no longer a long-press verb. The
+  earlier "cut save" reasoning is retained for lineage but the decision is reversed: a
+  gesture-only, purely local save earns its place.
 - **Mute — CUT** (decided 2026-05-30, same day). The automatic per-source **flood-cap**
   (`FLOOD_CAP_PER_SOURCE`, structural and identical for everyone) already handles one source
   dominating; manual mute was a personal, persistent, subtractive override — state pointing back
