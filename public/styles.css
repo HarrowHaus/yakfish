@@ -248,11 +248,6 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { width: 0; height: 0; display:
 }
 #river.is-dragging { transition: none; }
 
-/* Felt merge: when zooming out, lines collapse into their parent — a brief settle so
-   the motion IS the meaning, not a silent recount. (reduced-motion: instant, below.) */
-@keyframes river-merge { from { opacity: 0.4; transform: translateY(calc(var(--river-y) * -1px)) scaleY(0.985); } }
-#river.merging { animation: river-merge 300ms cubic-bezier(0.22, 0.61, 0.36, 1); }
-
 article {
   margin: 0 0 var(--space-s) 0;
   padding-left: 0.6rem;
@@ -374,73 +369,6 @@ article.is-diving { opacity: 1; }
   font-size: 0.85rem;
   color: var(--mute);
   margin: 1.5rem 0;
-}
-
-/* ---------- DENSITY stratum (pulled back) ---------- */
-/* The whole window's rhythm in one screen. Vertical axis = time (newest top). Each story is
-   one identical, translucent tick at its time-position — equal weight; overlaps ACCUMULATE
-   (alpha compositing) so a busy hour reads as a smooth dark/bright gradient, a quiet one as
-   sparse. No per-item text; hour labels + the tide line are the time landmark. */
-.density { position: relative; width: 100%; }
-.density .mark {
-  position: absolute;
-  left: 9%; right: 9%;
-  height: 7px;                                  /* translucent tick; overlaps accumulate */
-  margin-top: -3.5px;
-  background: var(--ink);
-  opacity: 0.14;                                /* translucent → many overlapping = denser band */
-  border-radius: 1px;
-  pointer-events: none;                         /* the column is the target; tap descends at that y */
-}
-.density .hour-line {
-  position: absolute;
-  left: 0; right: 0;
-  height: 1px;
-  background: var(--rule);
-  pointer-events: none;
-}
-.density .hour-label {
-  position: absolute;
-  left: 0;                                       /* in the thin left gutter (marks start at 9%) */
-  transform: translateY(-50%);
-  font-family: var(--face-rec);
-  font-variation-settings: "wght" 400, "CASL" 0, "MONO" 1, "slnt" 0;
-  font-size: 0.66rem;
-  letter-spacing: 0.02em;
-  color: var(--mute);
-  background: var(--bg);
-  padding-right: 0.3em;
-  pointer-events: none;
-  white-space: nowrap;
-}
-.density .density-tide {
-  position: absolute;
-  left: 0; right: 0;
-  height: 0;
-  border-top: 1px solid var(--signal);          /* the cool accent — same as the items new/old */
-  pointer-events: none;
-}
-.density .density-tide span {
-  position: absolute;
-  right: 0; transform: translateY(-50%);
-  font-family: var(--face-rec);
-  font-variation-settings: "wght" 400, "CASL" 0, "MONO" 1, "slnt" 0;
-  font-size: 0.62rem;
-  letter-spacing: 0.1em;
-  color: var(--signal);
-  background: var(--bg);
-  padding: 0 0.3em;
-  text-transform: lowercase;
-}
-.density .density-floor {
-  position: absolute;
-  left: 0; right: 0; bottom: 0;
-  text-align: center;
-  font-family: var(--face-rec);
-  font-variation-settings: "wght" 400, "CASL" 0, "MONO" 1, "slnt" 0;
-  font-size: 0.68rem;
-  color: var(--mute);
-  pointer-events: none;
 }
 
 /* ---------- first-paint entrance (gated) ---------- */
@@ -635,10 +563,9 @@ article.is-focused { box-shadow: inset 2px 0 0 0 var(--signal); }
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
-  /* The river becomes an instant page-turn; the felt merge becomes an instant recount;
-     the day-scrub, depth label, and colophon snap; the circadian tween is frozen. */
+  /* The river becomes an instant page-turn; the day-scrub, depth label, and colophon snap;
+     the circadian tween is frozen. */
   #river { transition: none !important; }
-  #river.merging { animation: none !important; }
   .first-load article { animation: none !important; }
   .dim-track, .depth-label, .colophon { transition: opacity 0.001ms !important; }
   html { transition: none !important; }

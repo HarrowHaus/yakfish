@@ -17,13 +17,10 @@
   const BUFFER_HOURS = 26;
   const STOP = new Set(['the','a','an','live','update','updates','breaking','and','of','in','on','to','for']);
 
-  /* Granularity = ALTITUDE, continuous, not a dial (DESIGN/DECISIONS 2026-05-30 lock).
-     One scalar `state.altitude` ∈ [0,1]: 0 = ITEMS (reading distance, default) ·
-     1 = DENSITY (pulled back — the time-shape of the window). ECHOES is off this axis
-     (it is the dive). The old raw/stories/threads rungs are retired. */
-  const ALT_SNAP = 0.5;       // release snaps to the nearer pole
-  const ALT_HYST = 0.05;      // dead-band around the snap to stop flip-thrash mid-pinch
-  const PINCH_K = 2;          // pinch sensitivity: ~1.4× spread spans the full altitude
+  /* The river has exactly two levels: ITEMS (the time-ordered headline list — the only
+     river view) and ECHOES (the dive into a story's sources). There is no granularity/zoom
+     axis: the raw/stories/threads dial, the typed zoom command, and the density stratum are
+     all retired (decorative; they did not serve catching up). */
 
   /* Reach-traverse tuning (in-hand feel; OPEN_QUESTIONS A). */
   const DRAG_SLOP = 8;        // px before a press becomes a drag
@@ -60,8 +57,6 @@
   const state = {
     endpoint: null,
     query: '',
-    altitude: 0,            // 0 = items (default) … 1 = density; continuous, set by pinch/keys
-    stratum: 'items',       // the currently-RENDERED stratum ('items' | 'density'), with hysteresis
     updatedAt: null,
     isFetching: false,
     dimHour: 12,            // the hour the page is painted at (auto = local clock)
@@ -113,10 +108,6 @@
   function fmtTime(iso) {
     if (!iso) return '';
     try { return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(new Date(iso)); }
-    catch { return ''; }
-  }
-  function fmtHour(t) {   // the density axis landmark: just the hour, e.g. "9 PM"
-    try { return new Intl.DateTimeFormat(undefined, { hour: 'numeric' }).format(new Date(t)); }
     catch { return ''; }
   }
   const tms = (iso) => { const t = new Date(iso).getTime(); return Number.isFinite(t) ? t : 0; };
@@ -278,97 +269,30 @@
       if (['input', 'textarea', 'select', 'button'].includes(tag)) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (state.isColophonOpen) return;
-      if ([' ', 'j', 'k', 'g', 's', 'o', '?', '/', '+', '=', '-', '_'].includes(e.key)) return; // reach/depth/save keys
+      if ([' ', 'j', 'k', 'g', 's', 'o', '?', '/'].includes(e.key)) return; // reach / save / open keys
       if (e.key === 'Escape') { if (state.query) { input.value = ''; state.query = ''; render(); updateHash(); e.preventDefault(); } return; }
       if (e.key.length === 1) { input.focus(); input.value += e.key; state.query = input.value; render(); updateHash(); e.preventDefault(); }
     });
   }
 
-  // Enter applies the typed free-text filter. (Granularity is altitude — a gesture, not a
-  // typed `zoom` command, which is retired; there is no mute either — DECISIONS.md
-  // 2026-05-30/31. Source dominance is the automatic flood-cap + positive filter.)
+  // Enter applies the typed free-text filter. (There is no zoom/granularity axis and no
+  // mute — both retired; source dominance is the automatic flood-cap + positive filter.)
   function runCommand(input) {
     state.query = input.value.trim();
     render(); updateHash();
   }
 
-  /* ---------- altitude (continuous granularity) ----------
-     A single scalar `state.altitude` ∈ [0,1] (0 = items, 1 = density). The pinch (mobile)
-     and +/- keys / double-click / ctrl-wheel (desktop) move it. Crossing the snap (with a
-     dead-band to stop thrash) flips the RENDERED stratum, holding the line at the gesture
-     centroid stable (both strata are time-ordered newest→top, so the story under the finger
-     keeps its place). ECHOES is the dive — off this axis. */
-
-  // The single entry point every altitude control funnels through. Returns true if the
-  // rendered stratum flipped (so callers can buzz / relabel).
-  function setAltitude(a, centroidY) {
-    state.altitude = clamp(a, 0, 1);
-    const cur = state.stratum;
-    let next = cur;
-    if (cur === 'items'   && state.altitude >= ALT_SNAP + ALT_HYST) next = 'density';
-    else if (cur === 'density' && state.altitude <= ALT_SNAP - ALT_HYST) next = 'items';
-    if (next === cur) return false;
-
-    // Capture the centroid story BEFORE the re-render, to hold it stable across the flip.
-    let anchorId = null, anchorScreenY = 0;
-    if (centroidY != null) {
-      const el = nodeAtScreenY(centroidY);
-      if (el) { anchorId = el.getAttribute('data-story'); anchorScreenY = el.getBoundingClientRect().top; }
-    }
-    flagMerge();
-    state.stratum = next; state.diveId = null;
-    render();
-    if (anchorId) {
-      const el = $('river').querySelector(`[data-story="${anchorId}"]`);
-      if (el) {
-        const streamTop = $('stream').getBoundingClientRect().top;
-        const maxOffset = state.reaches[state.reaches.length - 1] || 0;
-        const y = clamp(el.offsetTop - (anchorScreenY - streamTop), 0, maxOffset);
-        setRiverY(y);
-        let best = 0, bd = Infinity;
-        state.reaches.forEach((r, i) => { const d = Math.abs(r - y); if (d < bd) { bd = d; best = i; } });
-        state.reachIndex = best;
-      }
-    }
-    updateHash();
-    return true;
-  }
-  // Explicit poles for keys / double-click / a density tap (descend to reading distance).
-  function toItems(centroidY)   { return setAltitude(0, centroidY); }
-  function toDensity(centroidY) { return setAltitude(1, centroidY); }
-
-  // The nearest item element (article OR density mark) at a screen-y; both carry data-story.
-  function nodeAtScreenY(y) {
-    const r = $('stream').getBoundingClientRect();
-    const el = document.elementFromPoint((r.left + r.right) / 2, clamp(y, r.top + 1, r.bottom - 1));
-    return el ? el.closest('[data-story]') : null;
-  }
-
-  // Transient altitude label — surfaces only DURING a gesture, dissolves on release (the same
-  // no-at-rest pattern as the dim day-scrub). Nothing at rest.
-  function showDepth(text) { const el = $('depth-label'); if (el) { el.textContent = text; el.classList.add('is-active'); } }
-  function hideDepth() { const el = $('depth-label'); if (el) el.classList.remove('is-active'); }
-
-  // The merge cue: a brief settle on the river (reduced-motion: instant, in CSS).
-  function flagMerge() {
-    const river = $('river');
-    river.classList.remove('merging'); void river.offsetWidth; river.classList.add('merging');
-    setTimeout(() => river.classList.remove('merging'), 320);
-  }
-
-  /* ---------- URL view-state (filter + altitude; never read/saved) ---------- */
+  /* ---------- URL view-state (filter only; never read/saved) ---------- */
 
   function updateHash() {
     const p = new URLSearchParams();
     if (state.query.trim()) p.set('q', state.query.trim());
-    if (state.stratum === 'density') p.set('alt', 'density');   // only the non-default stratum
     const h = p.toString();
     try { history.replaceState(null, '', h ? '#' + h : location.pathname + location.search); } catch (_) {}
   }
   function readHash() {
     try {
       const p = new URLSearchParams(location.hash.replace(/^#/, ''));
-      if (p.get('alt') === 'density') { state.stratum = 'density'; state.altitude = 1; }
       if (p.get('q')) { state.query = p.get('q'); const i = $('prompt'); if (i) i.value = state.query; }
     } catch (_) {}
   }
@@ -477,12 +401,29 @@
     return entries;
   }
 
-  /* ---------- render (branches on altitude stratum) ---------- */
+  /* ---------- render — the ITEMS river (the only river view) ---------- */
 
   function render() {
     state.entries = buildEntries();
     const river = $('river');
-    river.innerHTML = (state.stratum === 'density') ? densityHTML() : itemsHTML();
+    const lv = state.lastVisitISO ? tms(state.lastVisitISO) : 0;
+
+    // The new/old boundary: first entry at or older than last visit.
+    let boundary = -1;
+    if (lv) { for (let i = 0; i < state.entries.length; i++) { if (tms(state.entries[i].time) <= lv) { boundary = i; break; } } }
+
+    const parts = [];
+    if (state.entries.length === 0) {
+      parts.push(`<p class="empty">${state.stories.size === 0 ? '' : 'no matches'}</p>`);
+    } else {
+      state.entries.forEach((e, i) => {
+        if (i === boundary && boundary > 0) parts.push(`<div class="newold is-floor" data-line="1"><span>new / old — caught up</span></div>`);
+        parts.push(renderEntry(e));
+      });
+      const caught = boundary === 0 || state.entries.every((e) => state.readSet.has(e.storyId) || (lv && tms(e.time) <= lv));
+      parts.push(`<div class="floor">${caught ? "you're caught up — nothing newer" : "— the bottom —"}</div>`);
+    }
+    river.innerHTML = parts.join('');
 
     if (!state.firstRendered && state.entries.length) {
       state.firstRendered = true;
@@ -493,66 +434,6 @@
     layoutReaches();
     goToReach(clamp(state.reachIndex, 0, state.reaches.length - 1), false);
     updateStatus();
-  }
-
-  // ITEMS (reading distance) — one line per event, order-spaced, per-line time as the
-  // landmark; the new/old line and finishable floor as before.
-  function itemsHTML() {
-    const lv = state.lastVisitISO ? tms(state.lastVisitISO) : 0;
-    let boundary = -1;
-    if (lv) { for (let i = 0; i < state.entries.length; i++) { if (tms(state.entries[i].time) <= lv) { boundary = i; break; } } }
-    if (state.entries.length === 0) return `<p class="empty">${state.stories.size === 0 ? '' : 'no matches'}</p>`;
-    const parts = [];
-    state.entries.forEach((e, i) => {
-      if (i === boundary && boundary > 0) parts.push(`<div class="newold is-floor" data-line="1"><span>new / old — caught up</span></div>`);
-      parts.push(renderEntry(e));
-    });
-    const caught = boundary === 0 || state.entries.every((e) => state.readSet.has(e.storyId) || (lv && tms(e.time) <= lv));
-    parts.push(`<div class="floor">${caught ? "you're caught up — nothing newer" : "— the bottom —"}</div>`);
-    return parts.join('');
-  }
-
-  // DENSITY (pulled back) — the WHOLE window's rhythm in one screen. Vertical axis = time
-  // (newest top), each story a thin EQUAL-WEIGHT translucent tick at its time-position so
-  // overlaps accumulate into a smooth gradient (busy hour = dark band, quiet = sparse). No
-  // per-item text (the content IS the temporal distribution); persistent hour labels + the
-  // tide line are the time landmark. Tap a mark → descend to items at that time.
-  function densityHTML() {
-    const E = state.entries;
-    if (!E.length) return `<p class="empty">${state.stories.size === 0 ? '' : 'no matches'}</p>`;
-    const vh = viewportH();
-    const PAD = 26;                                   // room for the "now" / "floor" / labels
-    let H = vh;                                        // aim: the whole window in ~1 screen…
-    const tNew = tms(E[0].time);
-    const tOld = tms(E[E.length - 1].time);
-    const span = Math.max(1, tNew - tOld);
-    const lv = state.lastVisitISO ? tms(state.lastVisitISO) : 0;
-
-    // Hour-label interval chosen so labels stay legible (≥ ~44px apart); widen to ~1.2
-    // screens only if even the coarsest sane interval would crowd (the fallback).
-    const hours = span / 3.6e6;
-    const steps = [1, 2, 3, 6, 12];
-    let stepH = steps.find((s) => (H - 2 * PAD) / (hours / s) >= 44) || 12;
-    if ((H - 2 * PAD) / (hours / stepH) < 38) H = Math.round(vh * 1.2);
-    const y = (t) => PAD + (tNew - t) / span * (H - 2 * PAD);
-
-    const parts = [`<div class="density" style="height:${H}px">`];
-    // persistent hour labels + faint gridlines (time = the landmark at this altitude)
-    const startHr = Math.ceil(tOld / 3.6e6) * 3.6e6;
-    for (let t = startHr; t <= tNew; t += stepH * 3.6e6) {
-      if ((t / 3.6e6) % stepH !== 0) continue;
-      parts.push(`<div class="hour-line" style="top:${y(t).toFixed(1)}px"></div>`);
-      parts.push(`<div class="hour-label" style="top:${y(t).toFixed(1)}px">${esc(fmtHour(t))}</div>`);
-    }
-    // the tide (new/old) line, at its own time-position
-    if (lv && lv > tOld && lv < tNew) parts.push(`<div class="density-tide" data-line="1" style="top:${y(lv).toFixed(1)}px"><span>new / old</span></div>`);
-    // one equal-weight tick per story (translucent → accumulates)
-    for (const e of E) {
-      parts.push(`<div class="mark" data-id="${esc(e.id)}" data-story="${esc(e.storyId)}" data-time="${esc(e.time)}" style="top:${y(tms(e.time)).toFixed(1)}px"></div>`);
-    }
-    parts.push(`<div class="density-floor">${E.length} in the window · caught up below</div>`);
-    parts.push(`</div>`);
-    return parts.join('');
   }
 
   function renderEntry(e) {
@@ -680,45 +561,12 @@ ${hosts}
     let swiping = false, swiped = false;   // a horizontal flick on an item = the share MARK
     let moveBound = null, upBound = null;
 
-    // ---- pinch (two-finger) = the explicit ALTITUDE control (mobile, primary) ----
-    // Intercepted only inside #stream (touch-action: none in CSS); the rest of the page
-    // keeps native behavior. Pinch OUT (fingers apart) → ITEMS (detail, altitude→0); pinch
-    // IN (fingers together) → DENSITY (the window's shape, altitude→1). Continuous: the
-    // gesture drives the scalar; crossing the snap flips the stratum (centroid held), and
-    // release snaps the scalar to the rendered stratum's pole.
+    // Pinch is UNBOUND — there is no altitude axis. A second finger is simply ignored so it
+    // can't hijack the one-finger traverse/press/swipe. (The map is only for clean teardown.)
     const pointers = new Map();
-    let pinch = false, pinchBase = 0, pinchStartAlt = 0, pinchCy = 0;
-    const twoPts = () => [...pointers.values()];
-    const pinchDist = () => { const p = twoPts(); return Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y); };
-    const pinchCentroidY = () => { const p = twoPts(); return (p[0].y + p[1].y) / 2; };
-
-    function startPinch() {
-      pinch = true;
-      if (dragging) { dragging = false; river.classList.remove('is-dragging'); goToReach(state.reachIndex, true); }
-      down = false; clearTimeout(pressTimer);
-      pinchBase = pinchDist();                  // fixed baseline → cumulative altitude
-      pinchStartAlt = state.altitude;
-      pinchCy = pinchCentroidY();
-      showDepth(state.stratum);
-    }
-    function endPinch() {
-      pinch = false;
-      setAltitude(state.stratum === 'density' ? 1 : 0, pinchCy);   // snap the scalar to the pole
-      hideDepth();
-    }
-    function onPinchMove() {
-      if (pointers.size < 2 || pinchBase <= 0) return;
-      const ratio = pinchDist() / pinchBase;
-      pinchCy = pinchCentroidY();
-      // out (ratio>1) → lower altitude (items/detail); in (ratio<1) → raise (density/shape).
-      const a = pinchStartAlt - PINCH_K * Math.log2(ratio);
-      if (setAltitude(a, pinchCy)) buzz(8);     // buzz only on the stratum flip
-      showDepth(state.stratum);
-    }
 
     function onMove(e) {
       if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (pinch) { onPinchMove(); return; }
       if (!down) return;
       const dy = e.clientY - startY, dx = e.clientX - startX;
       if (!dragging && !swiping && (Math.abs(dy) > DRAG_SLOP || Math.abs(dx) > DRAG_SLOP)) {
@@ -734,7 +582,6 @@ ${hosts}
     }
     function onUp(e) {
       pointers.delete(e.pointerId);
-      if (pinch) { if (pointers.size < 2) endPinch(); if (pointers.size === 0) teardown(); return; }
       if (!down && !dragging && !swiping) { if (pointers.size === 0) teardown(); return; }
       down = false; clearTimeout(pressTimer);
       if (dragging) {
@@ -747,19 +594,16 @@ ${hosts}
         else goToReach(state.reachIndex, true);
         dragging = false;
       } else if (swiping) {
-        // A committed horizontal flick on an ITEM is a directional MARK: swipe RIGHT → share
-        // (OS hand-off), swipe LEFT → save. Per-item marks belong to ITEMS only — at DENSITY
-        // a tick is a navigation target, not a markable item, so no save/share there.
+        // A committed horizontal flick on an item is a directional MARK: swipe RIGHT → share
+        // (OS hand-off), swipe LEFT → save (the two outbound marks).
         const dx = e.clientX - startX;
-        if (Math.abs(dx) > 56) {
-          swiped = true;                                  // suppress the trailing click in any stratum
-          if (state.stratum === 'items' && downTarget && downTarget.closest) {
-            const art = downTarget.closest('article');
-            if (art) {
-              if (dx > 0) shareItem(entryById(art.getAttribute('data-id')));
-              else toggleSave(art.getAttribute('data-story'));
-              buzz(10);
-            }
+        if (Math.abs(dx) > 56 && downTarget && downTarget.closest) {
+          const art = downTarget.closest('article');
+          if (art) {
+            swiped = true;
+            if (dx > 0) shareItem(entryById(art.getAttribute('data-id')));
+            else toggleSave(art.getAttribute('data-story'));
+            buzz(10);
           }
         }
         swiping = false;
@@ -781,26 +625,22 @@ ${hosts}
         window.addEventListener('pointerup', upBound);
         window.addEventListener('pointercancel', upBound);
       }
-      if (pointers.size >= 2) { startPinch(); return; }   // second finger → depth gesture
+      if (pointers.size >= 2) return;   // a second finger is ignored (pinch is unbound)
       down = true; dragging = false; didLong = false; swiping = false; swiped = false;
       startY = e.clientY; startX = e.clientX; downTarget = e.target;
       base = state.reaches[state.reachIndex] || 0;
-      // Long-press = DIVE — but only in ITEMS (the dive lives at reading distance). In
-      // DENSITY long-press descends to items at that point (density is navigate/descend only).
+      // Long-press = DIVE (the only depth axis is the dive — DECISIONS.md).
       pressTimer = setTimeout(() => {
-        if (!down || dragging || swiping || pinch) return;
+        if (!down || dragging || swiping) return;
         didLong = true; down = false;
-        if (state.stratum === 'density') { toItems(startY); buzz(10); return; }
         const art = downTarget.closest && downTarget.closest('article');
         if (art) { const en = entryById(art.getAttribute('data-id')); if (en) { toggleDive(art, en.id); buzz(12); } }
       }, LONG_MS);
     }, { passive: true });
 
-    // Tap. In DENSITY: descend to items at that time. In ITEMS: dive (multi-host) or leave.
-    // Drags / long-press / pinch / swipe suppress the click.
+    // Tap → dive (multi-host) or leave (single). Drags / long-press / swipe suppress the click.
     stream.addEventListener('click', (e) => {
-      if (dragging || didLong || pinch || swiped || e.detail > 1) { if (dragging || didLong || pinch || swiped) e.preventDefault(); didLong = false; swiped = false; return; }
-      if (state.stratum === 'density') { toItems(e.clientY); return; }   // approach → reveal constituents
+      if (dragging || didLong || swiped || e.detail > 1) { if (dragging || didLong || swiped) e.preventDefault(); didLong = false; swiped = false; return; }
       const hostLink = e.target.closest('.host-link');
       if (hostLink) { markRead(hostLink.closest('article').getAttribute('data-story')); collapseDive(); return; } // default opens new tab
       const head = e.target.closest('.head');
@@ -816,24 +656,13 @@ ${hosts}
     // long-press gesture isn't hijacked. Not global; the rest of the page keeps it.
     stream.addEventListener('contextmenu', (e) => e.preventDefault());
 
-    // Desktop: double-click descends to ITEMS (reading distance) at that line.
-    stream.addEventListener('dblclick', (e) => {
-      e.preventDefault();
-      if (toItems(e.clientY)) { showDepth('items'); setTimeout(hideDepth, 700); }
-    });
-
-    // Wheel / trackpad: pan a reach per gesture, no momentum. Ctrl+wheel = altitude
-    // (trackpad pinch-zoom): up → items (detail), down → density (shape).
+    // Wheel / trackpad: pan a reach per gesture, no momentum. (No altitude axis: Ctrl+wheel
+    // is not special — it just pans like a normal wheel.)
     let wheelLock = false;
     stream.addEventListener('wheel', (e) => {
       e.preventDefault();
       if (wheelLock || Math.abs(e.deltaY) < 4) return;
       wheelLock = true; setTimeout(() => { wheelLock = false; }, 360);
-      if (e.ctrlKey) {
-        const moved = e.deltaY < 0 ? toItems(e.clientY) : toDensity(e.clientY);
-        if (moved) { showDepth(state.stratum); setTimeout(hideDepth, 700); }
-        return;
-      }
       if (e.deltaY > 0) advance(false); else retreat();
     }, { passive: false });
   }
@@ -909,13 +738,6 @@ ${hosts}
       }
 
       if (e.key === '/') { $('prompt').focus(); e.preventDefault(); return; }
-      // Altitude keys (desktop parity with pinch): + / = → items (detail), - / _ → density (shape).
-      if (e.key === '+' || e.key === '=' || e.key === '-' || e.key === '_') {
-        const r = $('stream').getBoundingClientRect();
-        const moved = (e.key === '+' || e.key === '=') ? toItems((r.top + r.bottom) / 2) : toDensity((r.top + r.bottom) / 2);
-        if (moved) { showDepth(state.stratum); setTimeout(hideDepth, 700); }
-        e.preventDefault(); return;
-      }
       if (e.key === ' ' || e.key === 'PageDown' || e.key === 'ArrowDown') { advance(true); e.preventDefault(); return; }
       if (e.key === 'PageUp' || e.key === 'ArrowUp') { retreat(); e.preventDefault(); return; }
       if (e.key === 'Home') { goToReach(0, true); e.preventDefault(); return; }
