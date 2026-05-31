@@ -14,4 +14,24 @@ payload.endpoint = '/cache/news.json';
 payload.staticCacheBuiltAt = new Date().toISOString();
 await fs.writeFile(path.join(cacheDir, 'news.json'), JSON.stringify(payload, null, 2));
 await fs.writeFile(path.join(cacheDir, 'sources.json'), JSON.stringify(payload.sources, null, 2));
-console.log(`STATIC CACHE BUILT: ${payload.articleCount} articles, ${payload.sourceCount} sources`);
+
+// The client reads cache/latest.json FIRST, so this build MUST write it too — otherwise
+// Pages serves a stale latest.json while only news.json refreshes (the bug). Keep it
+// field-disciplined (CLAUDE.md): the story river + slim source-status only — never the
+// fat per-source provenance or articles[]. Degraded guard: if the build produced no
+// stories, do NOT overwrite — keep the last-good latest.json (stale-but-honest).
+if (Array.isArray(payload.stories) && payload.stories.length) {
+  const latest = {
+    product: payload.product,
+    updatedAt: payload.updatedAt,
+    storyCount: payload.storyCount,
+    multiSourceCount: payload.multiSourceCount,
+    sections: payload.sections,
+    stories: payload.stories,
+    sources: (payload.sources || []).map((s) => ({ id: s.id, label: s.label, section: s.section, status: s.status }))
+  };
+  await fs.writeFile(path.join(cacheDir, 'latest.json'), JSON.stringify(latest));
+  console.log(`STATIC CACHE BUILT: ${payload.storyCount} stories, ${payload.articleCount} articles, ${payload.sourceCount} sources (latest.json updated, updatedAt ${payload.updatedAt})`);
+} else {
+  console.warn(`STATIC CACHE BUILT (DEGRADED): no stories — kept last-good latest.json; news.json + sources.json updated`);
+}
