@@ -234,6 +234,8 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { width: 0; height: 0; display:
   overflow: hidden;
   min-height: 0;
   touch-action: none;          /* pointer drag drives the reach pager, not native scroll */
+  -webkit-touch-callout: none; /* no long-press callout/selection over the river */
+  user-select: none;
 }
 
 #river {
@@ -256,10 +258,19 @@ article {
   padding-left: 0.6rem;
   position: relative;
   transition: opacity 0.4s ease, filter 0.4s ease;
+  -webkit-touch-callout: none;   /* no iOS long-press callout — long-press is the dive */
+  user-select: none;
 }
-/* The tide (read/seen) is the ONLY intrinsic item state — no saved tint (DESIGN.md
-   2026-05-30: save routes to the OS, not an internal collection). */
+/* Intrinsic item state: the tide (read/seen) and saved (the keep mark, restored 2026-05-31). */
 article.is-read { opacity: 0.62; filter: saturate(0.78); }
+article.is-saved::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0.55em;
+  width: 1px; height: 0.9em;
+  background: var(--signal);
+  border-radius: 0.5px;
+}
 
 h2 {
   margin: 0 0 0.22rem 0;

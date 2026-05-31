@@ -79,6 +79,7 @@
     lineReachIndex: null,
     diveId: null,
     readSet: new Set(),
+    savedSet: new Set(),
     markedByTraverse: new Set(),
     lastVisitISO: null
   };
@@ -125,14 +126,16 @@
       localStorage.setItem('yakfish.migrated', '1');
     } catch (_) {}
   }
-  // The tide (read/seen) + last-visit are the ONLY intrinsic state. No saved/muted: "save"
-  // routes to the OS (egress, not an internal keep-pile) and mute is cut (DECISIONS.md
-  // 2026-05-30 verbs lock — the automatic flood-cap + positive filter cover dominance).
+  // Intrinsic per-user state: the tide (read/seen), saved, and last-visit. Save is back
+  // (2026-05-31 revision) as one of two directional swipe marks (the other is share).
+  // Mute stays CUT — the automatic flood-cap + positive filter cover source dominance.
   function loadPersisted() {
     try { const r = localStorage.getItem('yakfish.read');  if (r) state.readSet  = new Set(JSON.parse(r)); } catch (_) {}
+    try { const s = localStorage.getItem('yakfish.saved'); if (s) state.savedSet = new Set(JSON.parse(s)); } catch (_) {}
     try { state.lastVisitISO = localStorage.getItem('yakfish.lastVisit'); } catch (_) {}
   }
   function persistRead()  { try { const a = [...state.readSet].slice(-1000); state.readSet = new Set(a); localStorage.setItem('yakfish.read', JSON.stringify(a)); } catch (_) {} }
+  function persistSaved() { try { localStorage.setItem('yakfish.saved', JSON.stringify([...state.savedSet])); } catch (_) {} }
   function persistVisit() { try { localStorage.setItem('yakfish.lastVisit', new Date().toISOString()); } catch (_) {} }
 
   /* ---------- dim / chromatic — continuous circadian curve off the local clock ----------
@@ -267,7 +270,7 @@
       if (['input', 'textarea', 'select', 'button'].includes(tag)) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (state.isColophonOpen) return;
-      if ([' ', 'j', 'k', 'g', 'o', '?', '/', '+', '=', '-', '_'].includes(e.key)) return; // reach + depth keys
+      if ([' ', 'j', 'k', 'g', 's', 'o', '?', '/', '+', '=', '-', '_'].includes(e.key)) return; // reach/depth/save keys
       if (e.key === 'Escape') { if (state.query) { input.value = ''; state.query = ''; render(); updateHash(); e.preventDefault(); } return; }
       if (e.key.length === 1) { input.focus(); input.value += e.key; state.query = input.value; render(); updateHash(); e.preventDefault(); }
     });
@@ -462,6 +465,7 @@
   function matchesFilter(s, sources) {
     const q = state.query.trim().toLowerCase();
     if (!q || /^(zoom|>)/.test(q)) return true;
+    if (q === '@saved') return state.savedSet.has(s.id);
     if (q.startsWith('@')) {
       const term = q.slice(1); if (!term) return true;
       if ((s.section || '').toLowerCase().includes(term)) return true;
@@ -550,10 +554,10 @@
   function renderEntry(e) {
     const head = cleanTitle(e.headline);
     const time = fmtTime(e.time);
-    // The tide (read/seen) is the ONLY intrinsic item state — there is no saved tint
-    // (DESIGN.md 2026-05-30: "is-saved is retired; save routes to the OS").
+    // Item state: the tide (read/seen) and saved (the keep mark, restored 2026-05-31).
     const isRead = state.readSet.has(e.storyId);
-    const cls = isRead ? 'is-read' : '';
+    const isSaved = state.savedSet.has(e.storyId);
+    const cls = [isRead ? 'is-read' : '', isSaved ? 'is-saved' : ''].filter(Boolean).join(' ');
     const firstHost = e.sources[0] ? esc(e.sources[0].host) : '';
 
     // Depth (host count) is FELT through the dive, never displayed as a count/badge
@@ -737,12 +741,18 @@ ${hosts}
         else goToReach(state.reachIndex, true);
         dragging = false;
       } else if (swiping) {
-        // A committed horizontal flick on an item is the share MARK (gesture, not a button)
-        // — the "save" hand-off to the OS (DESIGN.md feedforward: "toward share → the sheet").
+        // A committed horizontal flick on an item is a directional MARK (gesture, not a
+        // button): swipe RIGHT → share (send out to the OS), swipe LEFT → save (keep).
+        // These are the interim two directions of the R4 feedforward fan.
         const dx = e.clientX - startX;
         if (Math.abs(dx) > 56 && downTarget && downTarget.closest) {
           const art = downTarget.closest('article');
-          if (art) { swiped = true; shareItem(entryById(art.getAttribute('data-id'))); buzz(10); }
+          if (art) {
+            swiped = true;
+            if (dx > 0) shareItem(entryById(art.getAttribute('data-id')));
+            else toggleSave(art.getAttribute('data-story'));
+            buzz(10);
+          }
         }
         swiping = false;
       }
@@ -790,6 +800,10 @@ ${hosts}
       }
     });
 
+    // Block the browser's long-press context menu — but ONLY inside the river, so the
+    // long-press = dive gesture isn't hijacked. Not global; the rest of the page keeps it.
+    stream.addEventListener('contextmenu', (e) => e.preventDefault());
+
     // Desktop: double-click a line pushes IN one level (toward raw). Centroid = that line.
     stream.addEventListener('dblclick', (e) => {
       const art = e.target.closest('article'); if (!art) return;
@@ -824,9 +838,17 @@ ${hosts}
     for (const a of $('river').querySelectorAll('article.is-diving')) a.classList.remove('is-diving');
     state.diveId = null;
   }
-  // The only "save": hand the link off to the OS (egress, not an internal keep-pile —
-  // DECISIONS.md 2026-05-30). navigator.share lifts the platform sheet (→ its reading list);
-  // where unavailable, copy the link. Must run inside the gesture handler for activation.
+  // Save (restored 2026-05-31) — a personal keep mark, the directional swipe opposite to
+  // share. Reachable via @saved. (R4 folds save + share into the feedforward radial fan.)
+  function toggleSave(storyId) {
+    if (!storyId) return;
+    if (state.savedSet.has(storyId)) state.savedSet.delete(storyId); else state.savedSet.add(storyId);
+    persistSaved();
+    for (const a of $('river').querySelectorAll(`article[data-story="${storyId}"]`)) a.classList.toggle('is-saved', state.savedSet.has(storyId));
+  }
+  // Share — hand the link off to the OS (egress). navigator.share lifts the platform sheet
+  // (→ its reading list); where unavailable, copy the link. Must run inside the gesture
+  // handler for activation. Save and share are the two directional swipe marks.
   async function shareItem(entry) {
     if (!entry || !entry.primaryUrl) return;
     const url = entry.primaryUrl;
@@ -889,6 +911,7 @@ ${hosts}
       if (e.key === 'Home') { goToReach(0, true); e.preventDefault(); return; }
       if (e.key === 'j') { focusStep(1); e.preventDefault(); return; }
       if (e.key === 'k') { focusStep(-1); e.preventDefault(); return; }
+      if (e.key === 's') { const el = focusedEl(); if (el) toggleSave(el.getAttribute('data-story')); e.preventDefault(); return; }
       if (e.key === 'o') { openFocused(); e.preventDefault(); return; }
       if (e.key === 'Enter') { const el = focusedEl(); if (el) { const en = entryById(el.getAttribute('data-id')); if (en && en.depth > 1) toggleDive(el, en.id); else openFocused(); } e.preventDefault(); return; }
       if (e.key === '?') { openColophon(); e.preventDefault(); return; }
