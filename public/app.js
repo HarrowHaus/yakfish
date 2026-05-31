@@ -79,8 +79,6 @@
     lineReachIndex: null,
     diveId: null,
     readSet: new Set(),
-    savedSet: new Set(),
-    mutedSet: new Set(),
     markedByTraverse: new Set(),
     lastVisitISO: null
   };
@@ -127,15 +125,14 @@
       localStorage.setItem('yakfish.migrated', '1');
     } catch (_) {}
   }
+  // The tide (read/seen) + last-visit are the ONLY intrinsic state. No saved/muted: "save"
+  // routes to the OS (egress, not an internal keep-pile) and mute is cut (DECISIONS.md
+  // 2026-05-30 verbs lock — the automatic flood-cap + positive filter cover dominance).
   function loadPersisted() {
     try { const r = localStorage.getItem('yakfish.read');  if (r) state.readSet  = new Set(JSON.parse(r)); } catch (_) {}
-    try { const s = localStorage.getItem('yakfish.saved'); if (s) state.savedSet = new Set(JSON.parse(s)); } catch (_) {}
-    try { const m = localStorage.getItem('yakfish.muted'); if (m) state.mutedSet = new Set(JSON.parse(m)); } catch (_) {}
     try { state.lastVisitISO = localStorage.getItem('yakfish.lastVisit'); } catch (_) {}
   }
   function persistRead()  { try { const a = [...state.readSet].slice(-1000); state.readSet = new Set(a); localStorage.setItem('yakfish.read', JSON.stringify(a)); } catch (_) {} }
-  function persistSaved() { try { localStorage.setItem('yakfish.saved', JSON.stringify([...state.savedSet])); } catch (_) {} }
-  function persistMuted() { try { localStorage.setItem('yakfish.muted', JSON.stringify([...state.mutedSet])); } catch (_) {} }
   function persistVisit() { try { localStorage.setItem('yakfish.lastVisit', new Date().toISOString()); } catch (_) {} }
 
   /* ---------- dim / chromatic — continuous circadian curve off the local clock ----------
@@ -270,21 +267,19 @@
       if (['input', 'textarea', 'select', 'button'].includes(tag)) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (state.isColophonOpen) return;
-      if ([' ', 'j', 'k', 'g', 's', 'o', '?', '/', '+', '=', '-', '_'].includes(e.key)) return; // reach + depth keys
+      if ([' ', 'j', 'k', 'g', 'o', '?', '/', '+', '=', '-', '_'].includes(e.key)) return; // reach + depth keys
       if (e.key === 'Escape') { if (state.query) { input.value = ''; state.query = ''; render(); updateHash(); e.preventDefault(); } return; }
       if (e.key.length === 1) { input.focus(); input.value += e.key; state.query = input.value; render(); updateHash(); e.preventDefault(); }
     });
   }
 
-  // Enter runs folded commands: -@source mutes; `zoom raw|stories|threads` and `zoom in|out`
-  // set depth (full parity with the pinch gesture — no one is gated by whether they can pinch).
+  // Enter runs folded commands: `zoom raw|stories|threads` and `zoom in|out` set depth
+  // (full parity with the pinch gesture). There is NO mute — source dominance is handled
+  // by the automatic flood-cap + positive filter (DECISIONS.md 2026-05-30 verbs lock).
   function runCommand(input) {
     const raw = input.value.trim();
     const low = raw.toLowerCase();
     let m;
-    if ((m = low.match(/^-\s*@?\s*(.+)$/))) {
-      toggleMute(m[1].trim()); input.value = ''; state.query = ''; render(); updateHash(); return;
-    }
     if ((m = low.match(/^(?:zoom|>)\s*:?\s*(raw|stories|threads|in|out)$/))) {
       input.value = ''; state.query = '';
       const arg = m[1];
@@ -292,13 +287,6 @@
       render(); updateHash(); return;
     }
     state.query = raw; render(); updateHash();
-  }
-
-  function toggleMute(term) {
-    const t = term.replace(/^@/, '').trim().toLowerCase();
-    if (!t) return;
-    if (state.mutedSet.has(t)) state.mutedSet.delete(t); else state.mutedSet.add(t);
-    persistMuted();
   }
 
   /* ---------- zoom = depth in the hierarchy (raw=0 / stories=1 / threads=2 layers) ----------
@@ -465,21 +453,15 @@
     return true;
   }
 
-  /* ---------- build render entries (mute → filter → zoom → new/old) ---------- */
+  /* ---------- build render entries (filter → zoom → new/old) ---------- */
 
-  function storyVisibleSources(s) {
-    if (!state.mutedSet.size) return s.sources;
-    return s.sources.filter((src) => {
-      const host = (src.host || '').toLowerCase();
-      const name = (src.name || '').toLowerCase();
-      for (const m of state.mutedSet) { if (host.includes(m) || name.includes(m)) return false; }
-      return true;
-    });
-  }
+  // No mute (DECISIONS.md 2026-05-30): every source is visible; dominance is shaped only
+  // by the build-side flood-cap. Kept as a seam so call sites read intent.
+  function storyVisibleSources(s) { return s.sources; }
+
   function matchesFilter(s, sources) {
     const q = state.query.trim().toLowerCase();
-    if (!q || /^(-|zoom|>)/.test(q)) return true;
-    if (q === '@saved') return state.savedSet.has(s.id);
+    if (!q || /^(zoom|>)/.test(q)) return true;
     if (q.startsWith('@')) {
       const term = q.slice(1); if (!term) return true;
       if ((s.section || '').toLowerCase().includes(term)) return true;
@@ -568,9 +550,10 @@
   function renderEntry(e) {
     const head = cleanTitle(e.headline);
     const time = fmtTime(e.time);
+    // The tide (read/seen) is the ONLY intrinsic item state — there is no saved tint
+    // (DESIGN.md 2026-05-30: "is-saved is retired; save routes to the OS").
     const isRead = state.readSet.has(e.storyId);
-    const isSaved = state.savedSet.has(e.storyId);
-    const cls = ['', isRead ? ' is-read' : '', isSaved ? ' is-saved' : ''].join('');
+    const cls = isRead ? 'is-read' : '';
     const firstHost = e.sources[0] ? esc(e.sources[0].host) : '';
 
     // Depth (host count) is FELT through the dive, never displayed as a count/badge
@@ -677,7 +660,7 @@ ${hosts}
     goToReach(state.reachIndex - 1, true);
   }
 
-  /* ---------- river interactions: traverse drag + tap-dive + long-press save/mute ---------- */
+  /* ---------- river interactions: traverse drag · tap-dive · long-press dive · swipe-share ---------- */
 
   function entryById(id) { return state.entries.find((e) => e.id === id); }
 
@@ -686,6 +669,7 @@ ${hosts}
     const river = $('river');
     if (!stream) return;
     let down = false, dragging = false, didLong = false, startY = 0, startX = 0, base = 0, downTarget = null, pressTimer = null;
+    let swiping = false, swiped = false;   // a horizontal flick on an item = the share MARK
     let moveBound = null, upBound = null;
 
     // ---- pinch (two-finger) = the depth gesture (mobile, primary) ----
@@ -727,9 +711,9 @@ ${hosts}
       if (pinch) { onPinchMove(); return; }
       if (!down) return;
       const dy = e.clientY - startY, dx = e.clientX - startX;
-      if (!dragging && (Math.abs(dy) > DRAG_SLOP || Math.abs(dx) > DRAG_SLOP)) {
+      if (!dragging && !swiping && (Math.abs(dy) > DRAG_SLOP || Math.abs(dx) > DRAG_SLOP)) {
         if (Math.abs(dy) >= Math.abs(dx)) { dragging = true; clearTimeout(pressTimer); river.classList.add('is-dragging'); }
-        else { down = false; return; } // horizontal — let it be (e.g. text select)
+        else { swiping = true; clearTimeout(pressTimer); }   // horizontal flick → share MARK
       }
       if (dragging) {
         const maxOffset = state.reaches[state.reaches.length - 1] || 0;
@@ -741,7 +725,7 @@ ${hosts}
     function onUp(e) {
       pointers.delete(e.pointerId);
       if (pinch) { if (pointers.size < 2) endPinch(); if (pointers.size === 0) teardown(); return; }
-      if (!down && !dragging) { if (pointers.size === 0) teardown(); return; }
+      if (!down && !dragging && !swiping) { if (pointers.size === 0) teardown(); return; }
       down = false; clearTimeout(pressTimer);
       if (dragging) {
         river.classList.remove('is-dragging');
@@ -752,6 +736,15 @@ ${hosts}
         else if (dy >= TH) retreat();
         else goToReach(state.reachIndex, true);
         dragging = false;
+      } else if (swiping) {
+        // A committed horizontal flick on an item is the share MARK (gesture, not a button)
+        // — the "save" hand-off to the OS (DESIGN.md feedforward: "toward share → the sheet").
+        const dx = e.clientX - startX;
+        if (Math.abs(dx) > 56 && downTarget && downTarget.closest) {
+          const art = downTarget.closest('article');
+          if (art) { swiped = true; shareItem(entryById(art.getAttribute('data-id'))); buzz(10); }
+        }
+        swiping = false;
       }
       if (pointers.size === 0) teardown();
     }
@@ -771,21 +764,21 @@ ${hosts}
         window.addEventListener('pointercancel', upBound);
       }
       if (pointers.size >= 2) { startPinch(); return; }   // second finger → depth gesture
-      down = true; dragging = false; didLong = false;
+      down = true; dragging = false; didLong = false; swiping = false; swiped = false;
       startY = e.clientY; startX = e.clientX; downTarget = e.target;
       base = state.reaches[state.reachIndex] || 0;
+      // Long-press = DIVE (DECISIONS.md 2026-05-30: hold = dive; save/mute are gone).
       pressTimer = setTimeout(() => {
-        if (!down || dragging || pinch) return;
+        if (!down || dragging || swiping || pinch) return;
         didLong = true; down = false;
-        const host = downTarget.closest && downTarget.closest('.host-link');
-        if (host) { toggleMute(host.getAttribute('data-host')); host.classList.toggle('is-muting'); buzz(12); render(); }
-        else { const art = downTarget.closest && downTarget.closest('article'); if (art) { toggleSave(art.getAttribute('data-story')); buzz(12); } }
+        const art = downTarget.closest && downTarget.closest('article');
+        if (art) { const en = entryById(art.getAttribute('data-id')); if (en) { toggleDive(art, en.id); buzz(12); } }
       }, LONG_MS);
     }, { passive: true });
 
-    // Tap → dive (multi-host) or leave (single). Drags/long-presses/pinch suppress the click.
+    // Tap → dive (multi-host) or leave (single). Drags/long-press/pinch/swipe suppress the click.
     stream.addEventListener('click', (e) => {
-      if (dragging || didLong || pinch || e.detail > 1) { if (dragging || didLong || pinch) e.preventDefault(); didLong = false; return; }
+      if (dragging || didLong || pinch || swiped || e.detail > 1) { if (dragging || didLong || pinch || swiped) e.preventDefault(); didLong = false; swiped = false; return; }
       const hostLink = e.target.closest('.host-link');
       if (hostLink) { markRead(hostLink.closest('article').getAttribute('data-story')); collapseDive(); return; } // default opens new tab
       const head = e.target.closest('.head');
@@ -831,11 +824,20 @@ ${hosts}
     for (const a of $('river').querySelectorAll('article.is-diving')) a.classList.remove('is-diving');
     state.diveId = null;
   }
-  function toggleSave(storyId) {
-    if (!storyId) return;
-    if (state.savedSet.has(storyId)) state.savedSet.delete(storyId); else state.savedSet.add(storyId);
-    persistSaved();
-    for (const a of $('river').querySelectorAll(`article[data-story="${storyId}"]`)) a.classList.toggle('is-saved', state.savedSet.has(storyId));
+  // The only "save": hand the link off to the OS (egress, not an internal keep-pile —
+  // DECISIONS.md 2026-05-30). navigator.share lifts the platform sheet (→ its reading list);
+  // where unavailable, copy the link. Must run inside the gesture handler for activation.
+  async function shareItem(entry) {
+    if (!entry || !entry.primaryUrl) return;
+    const url = entry.primaryUrl;
+    const title = cleanTitle(entry.headline);
+    if (navigator.share) {
+      try { await navigator.share({ title, url }); } catch (_) { /* user dismissed */ }
+      return;
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try { await navigator.clipboard.writeText(url); showDepth('link copied'); setTimeout(hideDepth, 1000); } catch (_) {}
+    }
   }
   function markRead(storyId) {
     if (!storyId || state.readSet.has(storyId)) return;
@@ -887,7 +889,6 @@ ${hosts}
       if (e.key === 'Home') { goToReach(0, true); e.preventDefault(); return; }
       if (e.key === 'j') { focusStep(1); e.preventDefault(); return; }
       if (e.key === 'k') { focusStep(-1); e.preventDefault(); return; }
-      if (e.key === 's') { const el = focusedEl(); if (el) toggleSave(el.getAttribute('data-story')); e.preventDefault(); return; }
       if (e.key === 'o') { openFocused(); e.preventDefault(); return; }
       if (e.key === 'Enter') { const el = focusedEl(); if (el) { const en = entryById(el.getAttribute('data-id')); if (en && en.depth > 1) toggleDive(el, en.id); else openFocused(); } e.preventDefault(); return; }
       if (e.key === '?') { openColophon(); e.preventDefault(); return; }

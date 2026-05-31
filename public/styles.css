@@ -257,16 +257,9 @@ article {
   position: relative;
   transition: opacity 0.4s ease, filter 0.4s ease;
 }
+/* The tide (read/seen) is the ONLY intrinsic item state — no saved tint (DESIGN.md
+   2026-05-30: save routes to the OS, not an internal collection). */
 article.is-read { opacity: 0.62; filter: saturate(0.78); }
-
-article.is-saved::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 0.55em;
-  width: 1px; height: 0.9em;
-  background: var(--signal);
-  border-radius: 0.5px;
-}
 
 h2 {
   margin: 0 0 0.22rem 0;
@@ -332,7 +325,6 @@ article.is-diving { opacity: 1; }
   border-bottom-color: var(--signal);
   text-decoration: none;
 }
-.host-link.is-muting { opacity: 0.45; }
 
 /* ---------- the new/old line + the floor ---------- */
 
