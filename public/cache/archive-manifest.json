@@ -1,14 +1,14 @@
 {
   "product": "yak.fish",
-  "updatedAt": "2026-08-18T05:28:21.150Z",
+  "updatedAt": "2026-08-18T05:57:17.207Z",
   "degraded": false,
   "sourceCount": 43,
   "okSourceCount": 32,
   "brokenSourceCount": 11,
   "latestStoryCount": 212,
   "latestMultiSourceCount": 0,
-  "archiveStoryCount": 650,
-  "appendedStoryCount": 26,
+  "archiveStoryCount": 646,
+  "appendedStoryCount": 14,
   "latestPath": "public/cache/latest.json",
   "archiveDir": "public/archive"
 }
